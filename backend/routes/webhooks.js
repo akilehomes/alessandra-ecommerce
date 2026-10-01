@@ -4,6 +4,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { Pool } = require('pg');
 const { sendOrderConfirmation } = require('../services/emailService');
 const agentService = require('../services/agentService');
+const { registerCouponUse } = require('../services/couponService');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -67,6 +68,7 @@ async function handlePaymentSucceeded(paymentIntent) {
   }
 
   const order = updated.rows[0];
+  await registerCouponUse(order.coupon_code);
   try {
     await sendOrderConfirmation(order, customerEmail || order.customer_email);
   } catch (err) {

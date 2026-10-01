@@ -6,6 +6,7 @@ const { pool } = require('../server');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 const { quoteForCart } = require('../services/shippingQuote');
+const { resolveCoupon } = require('../services/couponService');
 
 // POST create order from cart
 router.post('/', async (req, res) => {
@@ -115,27 +116,18 @@ router.post('/', async (req, res) => {
       shippingCost = Math.max(0, Number(clientShippingCost) || 0); // TODO: cotar fora do Brasil no servidor
     }
 
-    // Calculate discount if coupon provided
+    // Cupom: validado no banco e calculado sobre o subtotal do servidor.
+    // Se o cliente enviou um cupom invalido/vencido, o pedido e recusado (ele esperava o desconto).
     let discount = 0;
-    if (couponCode) {
-      const couponResult = await pool.query(
-        'SELECT * FROM coupons WHERE code = $1 AND active = true',
-        [couponCode.toUpperCase()]
-      );
-
-      if (couponResult.rows.length > 0) {
-        const coupon = couponResult.rows[0];
-        if (coupon.discount_type === 'percentage') {
-          discount = (subtotal * Number(coupon.discount_value)) / 100;
-        } else {
-          discount = Number(coupon.discount_value);
-        }
-
-        // Increment coupon usage
-        await pool.query(
-          'UPDATE coupons SET current_uses = current_uses + 1 WHERE id = $1',
-          [coupon.id]
-        );
+    let appliedCouponCode = null;
+    if (couponCode && String(couponCode).trim()) {
+      try {
+        const resolved = await resolveCoupon(couponCode, subtotal);
+        discount = resolved.discount;
+        appliedCouponCode = resolved.code;
+      } catch (e) {
+        if (e.status === 400) return res.status(400).json({ error: e.message });
+        throw e;
       }
     }
 
@@ -149,8 +141,8 @@ router.post('/', async (req, res) => {
       `INSERT INTO orders (
         user_id, order_number, status, subtotal, tax, shipping_cost, discount,
         total, customer_name, customer_email, customer_phone,
-        payment_method, region, shipping_address
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+        payment_method, region, shipping_address, coupon_code
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15)
        RETURNING *`,
       [
         userId,
@@ -167,6 +159,7 @@ router.post('/', async (req, res) => {
         paymentMethod,
         currency || 'BRL',
         JSON.stringify(address),
+        appliedCouponCode,
       ]
     );
 

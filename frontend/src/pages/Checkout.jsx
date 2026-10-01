@@ -7,7 +7,7 @@ import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
 import { useAuthStore } from '../store/authStore';
 import CouponForm from '../components/CouponForm';
-import { useCouponStore } from '../store/couponStore';
+import { useCouponStore, computeDiscount } from '../store/couponStore';
 import ShippingSelector from '../components/ShippingSelector';
 import './Checkout.css';
 
@@ -95,6 +95,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, total, cartId, clearCart } = useCartStore();
   const { region } = useRegionStore();
+  const { appliedCoupon, removeCoupon } = useCouponStore();
   const { user, token, getAuthHeader } = useAuthStore();
   const regionConfig = REGION_CONFIG[region];
   const [step, setStep] = useState(1); // 1: Address, 2: Shipping, 3: Review & Pay
@@ -165,9 +166,10 @@ export default function Checkout() {
     const subtotal = total;
     const tax = subtotal * taxRate;
     const shipping = shippingData.cost;
-    const finalTotal = subtotal + tax + shipping;
+    const discount = computeDiscount(appliedCoupon, subtotal);
+    const finalTotal = subtotal + tax + shipping - discount;
 
-    return { subtotal, tax, shipping, finalTotal };
+    return { subtotal, tax, shipping, discount, finalTotal };
   };
 
   // Cria o pedido (o servidor recalcula precos) e a cobranca; so entao mostra o formulario do Stripe
@@ -200,6 +202,7 @@ export default function Checkout() {
           cep: formData.cep,
         },
         shippingMethodId: shippingData.selectedMethod,
+        couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         paymentMethod: 'stripe',
         currency: regionConfig.currency,
         region,
@@ -214,7 +217,13 @@ export default function Checkout() {
       setPayment({ orderId, clientSecret: intentResponse.data.clientSecret });
       setStep(3);
     } catch (err) {
-      setError(err.response?.data?.error || 'Could not start payment');
+      const apiError = err.response?.data?.error || 'Could not start payment';
+      if (/coupon/i.test(apiError)) {
+        removeCoupon();
+        setError('Seu cupom não é mais válido e foi removido. Revise o total e continue.');
+      } else {
+        setError(apiError);
+      }
     } finally {
       setLoading(false);
     }
@@ -222,9 +231,10 @@ export default function Checkout() {
 
   const handlePaid = (orderId) => {
     clearCart();
+    removeCoupon();
     navigate(`/checkout/success?orderId=${orderId}`);
   };
-  const { subtotal, tax, shipping, finalTotal } = calculateTotals();
+  const { subtotal, tax, shipping, discount, finalTotal } = calculateTotals();
 
   if (!items || items.length === 0) {
     return (
@@ -448,6 +458,13 @@ export default function Checkout() {
             <span>Subtotal:</span>
             <span>{regionConfig.symbol} {subtotal.toFixed(2)}</span>
           </div>
+
+          {discount > 0 && (
+            <div className="summary-row">
+              <span>Discount ({appliedCoupon.code}):</span>
+              <span>-{regionConfig.symbol} {discount.toFixed(2)}</span>
+            </div>
+          )}
 
           <div className="summary-row">
             <span>Tax ({(regionConfig.taxRate * 100).toFixed(0)}%):</span>

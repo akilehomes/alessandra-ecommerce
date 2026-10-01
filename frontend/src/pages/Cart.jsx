@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
+import axios from 'axios';
 import ShippingCalculator from '../components/ShippingCalculator';
+import { useCouponStore, computeDiscount } from '../store/couponStore';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const REGION_CONFIG = {
   BR: { name: 'Brasil', symbol: 'R$', tax: 0.18 },
@@ -12,21 +16,42 @@ const REGION_CONFIG = {
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, total, updateQuantity, removeItem, applyCoupon } = useCartStore();
+  const { items, total, updateQuantity, removeItem } = useCartStore();
+  const { appliedCoupon, applyCoupon, removeCoupon } = useCouponStore();
   const { region } = useRegionStore();
   const regionConfig = REGION_CONFIG[region];
   const [couponCode, setCouponCode] = useState('');
-  const [discount, setDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState(null); // { type: 'ok' | 'error', text }
+  const [couponLoading, setCouponLoading] = useState(false);
+  const discount = computeDiscount(appliedCoupon, total); // acompanha mudancas no carrinho
   const [shipping, setShipping] = useState(null); // opcao de frete escolhida (somente Brasil)
 
   const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponMessage(null);
     try {
-      const result = await applyCoupon(couponCode);
-      setDiscount(result.discountAmount);
-      alert('Cupom aplicado!');
+      const response = await axios.post(`${API_URL}/coupons/validate`, { code, subtotal: total });
+      applyCoupon(response.data);
+      setCouponCode('');
+      setCouponMessage({ type: 'ok', text: 'Cupom aplicado.' });
     } catch (error) {
-      alert(error);
+      const reasons = {
+        'Invalid coupon code': 'Cupom inválido.',
+        'Coupon has expired': 'Este cupom expirou.',
+        'Coupon usage limit reached': 'Este cupom atingiu o limite de usos.',
+      };
+      const apiMessage = error.response?.data?.error;
+      setCouponMessage({ type: 'error', text: reasons[apiMessage] || 'Não foi possível aplicar o cupom.' });
+    } finally {
+      setCouponLoading(false);
     }
+  };
+
+  const handleRemoveCoupon = () => {
+    removeCoupon();
+    setCouponMessage(null);
   };
 
   if (items.length === 0) {
@@ -145,7 +170,7 @@ export default function Cart() {
 
               {discount > 0 && (
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'Outfit, sans-serif', fontSize: '14px', color: '#10b981'}}>
-                  <span>Discount:</span>
+                  <span>Discount ({appliedCoupon?.code}):</span>
                   <span>-{regionConfig.symbol} {discount.toFixed(2)}</span>
                 </div>
               )}
@@ -162,21 +187,43 @@ export default function Cart() {
                 <span>{regionConfig.symbol} {(total + (total * regionConfig.tax) - discount + (shipping ? Number(shipping.price) : 0)).toFixed(2)}</span>
               </div>
 
-              {/* Coupon Input */}
+              {/* Coupon */}
               <div style={{marginBottom: '16px'}}>
-                <input
-                  type="text"
-                  placeholder="Coupon code"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', padding: '8px', width: '100%', borderBottom: '1px solid #000', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', marginBottom: '12px', background: 'transparent'}}
-                />
-                <button
-                  onClick={handleApplyCoupon}
-                  style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '8px', width: '100%', border: '1px solid #000', background: '#fff', color: '#000', cursor: 'pointer', textTransform: 'uppercase'}}
-                >
-                  Apply Coupon
-                </button>
+                {appliedCoupon ? (
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Outfit, sans-serif', fontSize: '12px', padding: '10px 12px', background: '#f3f3f3'}}>
+                    <span>Cupom <strong>{appliedCoupon.code}</strong> aplicado</span>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      style={{background: 'none', border: 'none', color: '#666', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px'}}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Coupon code"
+                      aria-label="Código do cupom"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
+                      style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', padding: '8px', width: '100%', borderBottom: '1px solid #000', borderTop: 'none', borderLeft: 'none', borderRight: 'none', outline: 'none', marginBottom: '12px', background: 'transparent'}}
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading}
+                      style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '8px', width: '100%', border: '1px solid #000', background: '#fff', color: '#000', cursor: couponLoading ? 'wait' : 'pointer', textTransform: 'uppercase', opacity: couponLoading ? 0.6 : 1}}
+                    >
+                      {couponLoading ? 'Verificando…' : 'Apply Coupon'}
+                    </button>
+                  </>
+                )}
+                {couponMessage && (
+                  <p role="status" style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', margin: '8px 0 0', color: couponMessage.type === 'error' ? '#b00020' : '#2a6b2a'}}>
+                    {couponMessage.text}
+                  </p>
+                )}
               </div>
 
               <button
