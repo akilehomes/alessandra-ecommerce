@@ -1,0 +1,76 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded images statically
+const path = require('path');
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Database connection
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'password',
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME || 'alessandra_ecommerce',
+  ...(process.env.NODE_ENV === 'production' && { ssl: { rejectUnauthorized: false } })
+});
+
+// Export BEFORE requiring routes to avoid circular dependency
+module.exports = { app, pool };
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Database connection error:', err.message);
+  } else {
+    console.log('✅ Database connected');
+  }
+});
+
+// Routes (after export to avoid circular deps)
+app.use('/api/upload', require('./routes/upload'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/cart', require('./routes/cart'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/shipping', require('./routes/shipping'));
+app.use('/api/shipping-integration', require('./routes/shippingIntegration'));
+app.use('/api/payment', require('./routes/payment'));
+app.use('/api/taxes', require('./routes/taxes'));
+app.use('/api/currency', require('./routes/currency'));
+app.use('/webhooks', require('./routes/webhooks'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/wishlist', require('./routes/wishlist'));
+app.use('/api/search', require('./routes/search'));
+app.use('/api/variants', require('./routes/variants'));
+app.use('/api/coupons', require('./routes/coupons'));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date() });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    status: err.status || 500,
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
