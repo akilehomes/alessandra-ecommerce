@@ -59,6 +59,17 @@ app.use('/api/search', require('./routes/search'));
 app.use('/api/variants', require('./routes/variants'));
 app.use('/api/coupons', require('./routes/coupons'));
 
+// Quem abrir o dominio da API fora de /api e /webhooks vai para o site
+if (process.env.FRONTEND_URL) {
+  const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/webhooks')) {
+      return next();
+    }
+    res.redirect(301, frontendUrl + req.originalUrl);
+  });
+}
+
 // Root route
 app.get('/', (req, res) => {
   res.json({
