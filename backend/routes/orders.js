@@ -1,4 +1,5 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { pool } = require('../server');
@@ -253,24 +254,46 @@ router.get('/user/:userId', authMiddleware, async (req, res) => {
   }
 });
 
-// GET orders by email (public tracking)
-router.get('/search', async (req, res) => {
-  try {
-    const { email } = req.query;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+// Limite simples em memoria: 10 consultas de rastreio por IP a cada 15 minutos
+const trackHits = new Map();
+const trackRateLimit = (req, res, next) => {
+  const now = Date.now();
+  const recent = (trackHits.get(req.ip) || []).filter((t) => now - t < 15 * 60 * 1000);
+  recent.push(now);
+  trackHits.set(req.ip, recent);
+  if (trackHits.size > 5000) trackHits.clear();
+  if (recent.length > 10) {
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+  }
+  next();
+};
+
+// POST /api/orders/track  { orderNumber, email }
+// Exige numero do pedido E e-mail; nao lista pedidos de ninguem. Devolve so o id do pedido.
+router.post('/track', trackRateLimit, async (req, res) => {
+  try {
+    const orderNumber = String(req.body.orderNumber || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+
+    if (!orderNumber || !email) {
+      return res.status(400).json({ error: 'Order number and email are required' });
     }
 
     const result = await pool.query(
-      'SELECT id, order_number, status, total, created_at FROM orders WHERE customer_email = $1 ORDER BY created_at DESC LIMIT 10',
-      [email]
+      'SELECT id FROM orders WHERE UPPER(order_number) = UPPER($1) AND LOWER(customer_email) = $2 LIMIT 1',
+      [orderNumber, email]
     );
 
-    res.json(result.rows);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json({ id: result.rows[0].id });
   } catch (error) {
-    console.error('Search orders error:', error);
-    res.status(500).json({ error: 'Failed to search orders' });
+    console.error('Track order error:', error.message);
+    res.status(500).json({ error: 'Failed to find order' });
   }
 });
 
@@ -278,6 +301,9 @@ router.get('/search', async (req, res) => {
 router.get('/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
+    if (!UUID_RE.test(orderId)) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
 
     const orderResult = await pool.query(
       'SELECT * FROM orders WHERE id = $1',
@@ -292,7 +318,7 @@ router.get('/:orderId', async (req, res) => {
 
     // Get order items
     const itemsResult = await pool.query(
-      `SELECT oi.*, p.name, p.image_url
+      `SELECT oi.product_name, oi.quantity, oi.price, p.name, p.image_url
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = $1`,
@@ -305,8 +331,18 @@ router.get('/:orderId', async (req, res) => {
       [orderId]
     );
 
+    // O link /track/:id e enviado ao comprador por e-mail; so devolvemos o necessario
     res.json({
-      ...order,
+      id: order.id,
+      order_number: order.order_number,
+      status: order.status,
+      subtotal: order.subtotal,
+      tax: order.tax,
+      shipping_cost: order.shipping_cost,
+      discount: order.discount,
+      total: order.total,
+      created_at: order.created_at,
+      shipping_address: order.shipping_address || null,
       items: itemsResult.rows,
       shipping: shippingResult.rows[0] || null,
     });
@@ -354,10 +390,25 @@ router.put('/:orderId/status', adminAuthMiddleware, async (req, res) => {
   }
 });
 
-// DELETE cancel order
+// Identifica quem chama (usuario ou admin) sem exigir login em rotas que aceitam os dois
+function getRequester(req) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(header.substring(7), process.env.JWT_SECRET);
+  } catch (e) {
+    return null;
+  }
+}
+
+// DELETE cancel order (dono do pedido ou admin)
 router.delete('/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
+    const requester = getRequester(req);
+    if (!requester) {
+      return res.status(401).json({ error: 'Missing or invalid token' });
+    }
 
     // Get order
     const orderResult = await pool.query(
@@ -370,6 +421,11 @@ router.delete('/:orderId', async (req, res) => {
     }
 
     const order = orderResult.rows[0];
+
+    const isOwner = requester.userId && order.user_id && requester.userId === order.user_id;
+    if (!requester.isAdmin && !isOwner) {
+      return res.status(403).json({ error: 'You cannot cancel this order' });
+    }
 
     // Only cancel if not already paid/shipped
     if (['paid', 'shipped', 'delivered'].includes(order.status)) {

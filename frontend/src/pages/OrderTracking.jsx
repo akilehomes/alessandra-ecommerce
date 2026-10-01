@@ -2,12 +2,27 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+
+const money = (value) => `R$ ${(Number(value) || 0).toFixed(2)}`;
+
+// shipping_address pode vir como objeto (JSON) ou texto
+const formatAddress = (addr) => {
+  if (!addr) return '';
+  const a = typeof addr === 'string' ? (() => { try { return JSON.parse(addr); } catch (e) { return null; } })() : addr;
+  if (!a || typeof a !== 'object') return String(addr);
+  const line1 = [a.street, a.number].filter(Boolean).join(', ') + (a.complement ? ` - ${a.complement}` : '');
+  const line2 = [a.city, a.state].filter(Boolean).join(' - ') + (a.cep ? ` · CEP ${a.cep}` : '');
+  return [line1, line2].filter(Boolean).join('\n');
+};
+
 export default function OrderTracking() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -20,7 +35,7 @@ export default function OrderTracking() {
 
   const fetchOrder = async (id) => {
     try {
-      const response = await fetch(`/api/orders/${id}`);
+      const response = await fetch(`${API_URL}/orders/${id}`);
       if (response.ok) {
         const data = await response.json();
         setOrder(data);
@@ -38,22 +53,24 @@ export default function OrderTracking() {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !orderNumber.trim()) return;
 
     try {
-      const response = await fetch(`/api/orders/search?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_URL}/orders/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber: orderNumber.trim(), email: email.trim() }),
+      });
       if (response.ok) {
-        const orders = await response.json();
-        if (orders.length > 0) {
-          navigate(`/track/${orders[0].id}`);
-          setOrder(orders[0]);
-          setShowForm(false);
-        } else {
-          alert('Nenhum pedido encontrado para este email');
-        }
+        const { id } = await response.json();
+        navigate(`/track/${id}`);
+      } else if (response.status === 429) {
+        alert('Muitas tentativas. Aguarde alguns minutos e tente de novo.');
+      } else {
+        alert('Pedido não encontrado. Confira o número do pedido e o e-mail usado na compra.');
       }
     } catch (error) {
-      console.error('Error searching orders:', error);
+      console.error('Error searching order:', error);
       alert('Erro ao buscar pedido');
     }
   };
@@ -95,6 +112,20 @@ export default function OrderTracking() {
           </div>
 
           <form onSubmit={handleSearch} className="space-y-6">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-700">
+                Número do Pedido
+              </label>
+              <input
+                type="text"
+                value={orderNumber}
+                onChange={(e) => setOrderNumber(e.target.value)}
+                placeholder="ORD-1234567890"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-black"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-700">
                 Seu Email
@@ -236,10 +267,10 @@ export default function OrderTracking() {
               {order.items && order.items.map((item, index) => (
                 <div key={index} className="flex justify-between items-start pb-3 border-b border-gray-200 last:border-b-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                    <p className="text-sm font-medium text-gray-900">{item.name || item.product_name}</p>
                     <p className="text-xs text-gray-600">Quantidade: {item.quantity}</p>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">R$ {(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="text-sm font-medium text-gray-900">{money(Number(item.price) * Number(item.quantity))}</p>
                 </div>
               ))}
             </div>
@@ -251,19 +282,19 @@ export default function OrderTracking() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal</span>
-                <span>R$ {(order.subtotal || 0).toFixed(2)}</span>
+                <span>{money(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Frete</span>
-                <span>R$ {(order.shipping_cost || 0).toFixed(2)}</span>
+                <span>{money(order.shipping_cost)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Impostos</span>
-                <span>R$ {(order.tax_amount || 0).toFixed(2)}</span>
+                <span>{money(order.tax)}</span>
               </div>
               <div className="flex justify-between font-bold text-gray-900 pt-3 border-t border-gray-200 text-base">
                 <span>Total</span>
-                <span>R$ {(order.total || 0).toFixed(2)}</span>
+                <span>{money(order.total)}</span>
               </div>
             </div>
           </div>
@@ -273,7 +304,7 @@ export default function OrderTracking() {
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">Endereço de Entrega</h3>
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-none text-sm text-gray-700 whitespace-pre-wrap">
-                {order.shipping_address}
+                {formatAddress(order.shipping_address)}
               </div>
             </div>
           )}
