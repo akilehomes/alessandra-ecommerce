@@ -23,6 +23,12 @@ FROM nginx:alpine
 # Copiar build para Nginx
 COPY --from=builder /app/build /usr/share/nginx/html
 
+# Debug: Verificar se os arquivos foram copiados
+RUN echo "=== Conteúdo de /usr/share/nginx/html ===" && \
+    ls -la /usr/share/nginx/html && \
+    echo "=== Conteúdo de index.html ===" && \
+    head -5 /usr/share/nginx/html/index.html
+
 # Copiar configuração Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
