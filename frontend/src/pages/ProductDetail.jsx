@@ -312,7 +312,7 @@ export default function ProductDetail() {
               </button>
 
               {region === 'BR' && (
-                <ShippingCalculator items={[{ productId: product.id, quantity: parseInt(quantity) || 1 }]} />
+                <ShippingCalculator items={[{ productId: product.id, quantity: parseInt(quantity) || 1, name: product.name }]} />
               )}
             </div>
 

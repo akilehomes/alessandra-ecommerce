@@ -196,8 +196,41 @@ async function sendPasswordReset(email, name, resetUrl) {
   }
 }
 
+// Avisa a loja de um novo pedido de orcamento (destino em SHOP_NOTIFY_EMAIL; sem a variavel, so grava no painel)
+async function sendQuotationNotification(q) {
+  const to = process.env.SHOP_NOTIFY_EMAIL;
+  if (!to) return { success: false, skipped: true };
+  const esc = (v) => String(v ?? '').replace(/[<>&]/g, '');
+  const html = `
+    <html>
+      <body style="font-family: Outfit, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <h1 style="font-size: 20px; text-transform: uppercase; letter-spacing: 1px;">Novo pedido de orçamento</h1>
+        <p><strong>${esc(q.customer_name)}</strong><br>
+        E-mail: ${esc(q.customer_email)}<br>
+        Telefone: ${esc(q.customer_phone) || 'não informado'}</p>
+        <p style="white-space: pre-wrap; background: #f5f5f5; padding: 14px;">${esc(q.custom_description)}</p>
+        <p style="font-size: 12px; color: #999;">Responda ao cliente e registre o valor em Admin → Orçamentos.</p>
+      </body>
+    </html>
+  `;
+  try {
+    const response = await mg.messages.create(MAILGUN_DOMAIN, {
+      from: FROM_EMAIL,
+      to,
+      'h:Reply-To': q.customer_email,
+      subject: `Orçamento de frete — ${esc(q.customer_name)}`,
+      html,
+    });
+    return { success: true, messageId: response.id };
+  } catch (error) {
+    console.error('Error sending quotation notification:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendOrderConfirmation,
   sendShippingNotification,
   sendPasswordReset,
+  sendQuotationNotification,
 };

@@ -11,15 +11,16 @@ async function calculateShippingForProducts(destZipCode, products) {
   try {
     // TODO: Quando tiver chave, remover esta verificacao mock
     if (!process.env.MELHOR_ENVIO_TOKEN) {
-      return generateMockShippingOptions(destZipCode, totalWeight);
+      return mockOptionsFor(destZipCode, products, totalWeight);
     }
     return await callMelhorEnvioAPI(destZipCode, products);
   } catch (error) {
+    if (error.code === 'NO_SHIPPING_OPTIONS') throw error; // nao e falha da API: e um caso real
     console.error('❌ Melhor Envio Error:', error.message);
     // Fallback simulado somente em dev (ALLOW_SHIPPING_MOCK=true); em producao o erro sobe
     if (process.env.ALLOW_SHIPPING_MOCK === 'true') {
       console.warn('⚠️ Usando frete simulado (ALLOW_SHIPPING_MOCK)');
-      return generateMockShippingOptions(destZipCode, totalWeight);
+      return mockOptionsFor(destZipCode, products, totalWeight);
     }
     throw error;
   }
@@ -36,6 +37,13 @@ async function calculateShipping(destZipCode, weight, dimensions = {}) {
     insurance_value: 0,
     quantity: 1,
   }]);
+}
+
+// Simulado (dev): imita o limite real das transportadoras (maior lado acima de 150 cm = sem opcoes)
+function mockOptionsFor(destZipCode, products, totalWeight) {
+  const tooBig = products.some((p) => Math.max(Number(p.width) || 0, Number(p.height) || 0, Number(p.length) || 0) > 150);
+  if (tooBig) throw noOptionsError();
+  return generateMockShippingOptions(destZipCode, totalWeight);
 }
 
 function generateMockShippingOptions(destZipCode, weight) {
@@ -77,6 +85,14 @@ function generateMockShippingOptions(destZipCode, weight) {
 // Sandbox:  https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate (token do sandbox)
 const MELHOR_ENVIO_URL =
   process.env.MELHOR_ENVIO_URL || 'https://melhorenvio.com.br/api/v2/me/shipment/calculate';
+
+// Nenhuma transportadora automatica atende (item grande/pesado demais ou CEP sem cobertura)
+function noOptionsError() {
+  const err = new Error('No automatic shipping options available');
+  err.code = 'NO_SHIPPING_OPTIONS';
+  err.status = 422;
+  return err;
+}
 
 // Minimos aceitos pelas transportadoras (evita recusa da API por medidas muito pequenas)
 const MIN_WIDTH = 11;
@@ -124,9 +140,7 @@ async function callMelhorEnvioAPI(destZipCode, products) {
       currency: 'BRL',
     }));
 
-  if (options.length === 0) {
-    throw new Error('Melhor Envio returned no shipping options');
-  }
+  if (options.length === 0) throw noOptionsError();
   return options;
 }
 

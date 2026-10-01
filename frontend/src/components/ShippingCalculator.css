@@ -173,3 +173,58 @@
   align-items: baseline;
   gap: 12px;
 }
+
+/* Frete especial (sem transportadora automatica) */
+.psc-special {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #f7f3ee;
+  border-left: 3px solid #000;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.psc-special strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.psc-special-items {
+  margin: 6px 0 12px;
+  color: #444;
+}
+
+.psc-button--wide {
+  width: 100%;
+}
+
+.psc-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.psc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #444;
+}
+
+.psc-textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.psc-success {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  background: #eef6ee;
+  color: #2a6b2a;
+  font-size: 13px;
+}

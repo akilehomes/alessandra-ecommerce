@@ -577,27 +577,51 @@ router.put('/currency-rates/:id', adminAuthMiddleware, async (req, res) => {
 // GET /api/admin/quotations
 router.get('/quotations', adminAuthMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM quotations ORDER BY requested_at DESC');
+    const result = await pool.query(
+      `SELECT q.*, p.name AS product_name
+       FROM quotations q
+       LEFT JOIN products p ON p.id = q.product_id
+       ORDER BY q.requested_at DESC
+       LIMIT 200`
+    );
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('List quotations error:', error.message);
+    res.status(500).json({ error: 'Could not load quotations' });
   }
 });
 
-// PUT /api/admin/quotations/:id
+// PUT /api/admin/quotations/:id  { quote_price?, status? }
 router.put('/quotations/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { quote_price } = req.body;
+    const status = req.body.status;
+    if (status !== undefined && !['pending', 'sent', 'closed'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    let price = null;
+    if (req.body.quote_price !== undefined && req.body.quote_price !== '') {
+      price = Number(req.body.quote_price);
+      if (!Number.isFinite(price) || price < 0) {
+        return res.status(400).json({ error: 'Invalid quote price' });
+      }
+    }
 
     const result = await pool.query(
-      'UPDATE quotations SET quote_price = $1, status = $2, sent_at = NOW() WHERE id = $3 RETURNING *',
-      [quote_price, 'sent', id]
+      `UPDATE quotations
+       SET quote_price = COALESCE($1, quote_price),
+           status = COALESCE($2, status),
+           sent_at = CASE WHEN COALESCE($2, status) = 'sent' AND sent_at IS NULL THEN NOW() ELSE sent_at END
+       WHERE id = $3
+       RETURNING *`,
+      [price, status || null, id]
     );
 
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' });
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Update quotation error:', error.message);
+    res.status(500).json({ error: 'Could not update quotation' });
   }
 });
 

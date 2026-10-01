@@ -66,6 +66,8 @@ router.post('/calculate', rateLimit, async (req, res) => {
     console.error('Shipping calculation error:', error.message);
     res.status(error.status || 400).json({
       error: error.message || 'Failed to calculate shipping',
+      code: error.code,
+      specialProducts: error.specialProducts,
     });
   }
 });

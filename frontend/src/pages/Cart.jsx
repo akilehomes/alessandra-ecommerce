@@ -24,6 +24,7 @@ export default function Cart() {
   const [couponMessage, setCouponMessage] = useState(null); // { type: 'ok' | 'error', text }
   const [couponLoading, setCouponLoading] = useState(false);
   const discount = computeDiscount(appliedCoupon, total); // acompanha mudancas no carrinho
+  const [specialShipping, setSpecialShipping] = useState(false); // ha item sem frete automatico
   const [shipping, setShipping] = useState(null); // opcao de frete escolhida (somente Brasil)
 
   const handleApplyCoupon = async () => {
@@ -142,8 +143,9 @@ export default function Cart() {
                 selectable
                 autoCalculate
                 symbol={regionConfig.symbol}
-                items={items.map((item) => ({ productId: item.productId, quantity: item.quantity }))}
+                items={items.map((item) => ({ productId: item.productId, quantity: item.quantity, name: item.name }))}
                 onSelect={setShipping}
+                onSpecial={setSpecialShipping}
               />
             )}
           </div>
@@ -228,10 +230,16 @@ export default function Cart() {
 
               <button
                 onClick={() => navigate('/checkout')}
-                style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px', width: '100%', border: '1px solid #000', background: '#000', color: '#fff', cursor: 'pointer', textTransform: 'uppercase', marginBottom: '12px'}}
+                disabled={specialShipping}
+                style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px', width: '100%', border: '1px solid #000', background: '#000', color: '#fff', cursor: specialShipping ? 'not-allowed' : 'pointer', textTransform: 'uppercase', marginBottom: specialShipping ? '8px' : '12px', opacity: specialShipping ? 0.45 : 1}}
               >
                 Proceed to Checkout
               </button>
+              {specialShipping && (
+                <p role="status" style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', color: '#666', margin: '0 0 12px'}}>
+                  Há um item com frete especial. Peça o orçamento de frete ao lado ou remova o item para finalizar.
+                </p>
+              )}
 
               <button
                 onClick={() => navigate('/shop')}

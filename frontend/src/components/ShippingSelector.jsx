@@ -40,7 +40,11 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
       }
     } catch (err) {
       console.error('Erro ao calcular frete:', err);
-      setError(err.response?.data?.error || 'Erro ao calcular frete. Tente novamente.');
+      setError(
+        err.response?.data?.code === 'NO_SHIPPING_OPTIONS'
+          ? 'Há um item com frete especial. Volte ao carrinho e peça o orçamento de frete.'
+          : (err.response?.data?.error || 'Erro ao calcular frete. Tente novamente.')
+      );
     } finally {
       setLoading(false);
     }

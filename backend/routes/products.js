@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('../middleware/rateLimit');
+const { sendQuotationNotification } = require('../services/emailService');
+
+// 5 pedidos de orcamento por hora por visitante
+const quotationRateLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Too many requests. Please try again later.' });
 const { app, pool } = require('../server');
 
 // GET all products with filters
@@ -149,29 +154,38 @@ router.post('/:id/notify-me', async (req, res) => {
 });
 
 // POST quotation request
-router.post('/quotation/request', async (req, res) => {
+router.post('/quotation/request', quotationRateLimit, async (req, res) => {
   try {
-    const { customer_name, customer_email, customer_phone, product_id, custom_description, quantity } = req.body;
+    const clean = (v, max) => String(v ?? '').trim().slice(0, max);
+    const customer_name = clean(req.body.customer_name, 120);
+    const customer_email = clean(req.body.customer_email, 160).toLowerCase();
+    const customer_phone = clean(req.body.customer_phone, 30) || null;
+    const custom_description = clean(req.body.custom_description, 1500) || null;
+    const quantity = Math.min(100, Math.max(1, Math.floor(Number(req.body.quantity)) || 1));
+    const product_id = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(req.body.product_id || ''))
+      ? req.body.product_id : null;
 
-    if (!customer_email || !customer_name) {
-      return res.status(400).json({ error: 'Name and email are required' });
+    if (customer_name.length < 2) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer_email)) {
+      return res.status(400).json({ error: 'A valid email is required' });
     }
 
     const result = await pool.query(
       `INSERT INTO quotations (customer_name, customer_email, customer_phone, product_id, custom_description, quantity)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
+       RETURNING id, customer_name, customer_email, customer_phone, custom_description`,
       [customer_name, customer_email, customer_phone, product_id, custom_description, quantity]
     );
 
-    // TODO: Send notification email to admin
+    // Aviso a loja (nao bloqueia a resposta ao cliente)
+    sendQuotationNotification(result.rows[0]).catch((err) => console.error('Quotation notice failed:', err.message));
 
-    res.status(201).json({
-      message: 'Quotation request received. We will contact you soon.',
-      data: result.rows[0],
-    });
+    res.status(201).json({ message: 'Quotation request received. We will contact you soon.' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Quotation request error:', error.message);
+    res.status(500).json({ error: 'Could not send your request' });
   }
 });
 

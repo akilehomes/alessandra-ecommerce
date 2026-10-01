@@ -105,6 +105,12 @@ router.post('/', async (req, res) => {
         });
       } catch (e) {
         console.error('Shipping re-quote failed:', e.message);
+        if (e.code === 'NO_SHIPPING_OPTIONS') {
+          return res.status(400).json({
+            error: 'This order needs special shipping. Please request a shipping quote.',
+            code: 'NO_SHIPPING_OPTIONS',
+          });
+        }
         return res.status(e.status === 400 ? 400 : 502).json({ error: 'Could not confirm the shipping price. Please try again.' });
       }
       const chosen = quoted.find((o) => o.id === shippingMethodId);

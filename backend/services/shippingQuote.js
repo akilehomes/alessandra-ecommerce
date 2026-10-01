@@ -39,6 +39,20 @@ async function loadCartProducts(items) {
   });
 }
 
+// Quando o carrinho inteiro nao tem frete automatico, descobre quais itens sao o motivo
+async function findSpecialProducts(zipCode, products) {
+  if (products.length === 1) return [products[0].id];
+  const special = [];
+  for (const product of products) {
+    try {
+      await melhorEnvio.calculateShippingForProducts(zipCode, [product]);
+    } catch (e) {
+      if (e.code === 'NO_SHIPPING_OPTIONS') special.push(product.id);
+    }
+  }
+  return special;
+}
+
 // Cache curto: o mesmo CEP + mesmos itens nao precisam consultar o Melhor Envio toda vez
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_MAX = 500;
@@ -84,7 +98,12 @@ async function quoteForCartUncached({ items, zipCode, country = 'BR' }) {
 
   let options;
   if (country.toUpperCase() === 'BR') {
-    options = await melhorEnvio.calculateShippingForProducts(zipCode, products);
+    try {
+      options = await melhorEnvio.calculateShippingForProducts(zipCode, products);
+    } catch (e) {
+      if (e.code === 'NO_SHIPPING_OPTIONS') e.specialProducts = await findSpecialProducts(zipCode, products);
+      throw e;
+    }
   } else {
     // Outros paises: servico existente, com peso total e a maior caixa
     const totalWeight = products.reduce((sum, p) => sum + p.weight * p.quantity, 0);

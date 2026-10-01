@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import SpecialShippingRequest from './SpecialShippingRequest';
 import './ShippingCalculator.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -41,13 +42,23 @@ export default function ShippingCalculator({
   onSelect,
   autoCalculate = false,
   bare = false,
+  onSpecial,
 }) {
   const [cep, setCep] = useState(readSavedCep);
   const [result, setResult] = useState(null); // { options, cep }
   const [selectedId, setSelectedId] = useState(null);
+  const [special, setSpecial] = useState(null); // { products: [ids] } quando nao ha frete automatico
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const requestId = useRef(0);
+  const lastCep = useRef('');
+  const onSpecialRef = useRef(onSpecial);
+  onSpecialRef.current = onSpecial;
+
+  const markSpecial = useCallback((value) => {
+    setSpecial(value);
+    if (onSpecialRef.current) onSpecialRef.current(!!value);
+  }, []);
   const selectedIdRef = useRef(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -70,6 +81,7 @@ export default function ShippingCalculator({
     if (!items || items.length === 0) return;
 
     const current = ++requestId.current;
+    lastCep.current = formatCep(digits);
     setLoading(true);
     setError(null);
     try {
@@ -79,6 +91,7 @@ export default function ShippingCalculator({
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
       if (current !== requestId.current) return; // resposta antiga
+      markSpecial(null);
       const options = [...(response.data.options || [])].sort((a, b) => a.price - b.price);
       if (options.length === 0) {
         setResult(null);
@@ -100,6 +113,11 @@ export default function ShippingCalculator({
       if (current !== requestId.current) return;
       setResult(null);
       choose(null);
+      if (err.response?.data?.code === 'NO_SHIPPING_OPTIONS') {
+        markSpecial({ products: err.response.data.specialProducts || [] });
+        return;
+      }
+      markSpecial(null);
       setError(
         err.response?.status === 429
           ? 'Muitas consultas seguidas. Aguarde um instante e tente de novo.'
@@ -109,7 +127,7 @@ export default function ShippingCalculator({
       if (current === requestId.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemsKey, selectable, choose]);
+  }, [itemsKey, selectable, choose, markSpecial]);
 
   // Calcula sozinha ao abrir, se pedido e se ja houver CEP salvo
   useEffect(() => {
@@ -119,8 +137,8 @@ export default function ShippingCalculator({
 
   // Se os itens ou as quantidades mudam depois de calcular, recalcula sozinha
   useEffect(() => {
-    if (!result) return undefined;
-    const timer = setTimeout(() => calculate(result.cep), 400);
+    if (!result && !special) return undefined;
+    const timer = setTimeout(() => calculate(result ? result.cep : lastCep.current), 400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsKey]);
@@ -163,6 +181,19 @@ export default function ShippingCalculator({
 
       <div aria-live="polite">
         {error && <p className="psc-error">{error}</p>}
+
+        {special && (
+          <div className="psc-special">
+            <strong>Frete especial</strong>
+            Este item é grande ou pesado demais para as transportadoras automáticas. Peça um orçamento de frete e
+            respondemos por e-mail com o valor.
+            {(() => {
+              const names = items.filter((i) => special.products.includes(i.productId)).map((i) => i.name).filter(Boolean);
+              return names.length > 0 ? <div className="psc-special-items">Item: {names.join(', ')}</div> : <div className="psc-special-items" />;
+            })()}
+            <SpecialShippingRequest items={items} specialProducts={special.products} cep={lastCep.current} />
+          </div>
+        )}
 
         {result && (
           <div className="psc-result">

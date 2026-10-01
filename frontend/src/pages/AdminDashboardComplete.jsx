@@ -30,6 +30,8 @@ export default function AdminDashboardComplete() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [quotations, setQuotations] = useState([]);
+  const [quotePrices, setQuotePrices] = useState({}); // valor digitado por orcamento
   const [shippingRates, setShippingRates] = useState([]);
   const [taxRates, setTaxRates] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -71,10 +73,12 @@ export default function AdminDashboardComplete() {
         axios.get(`${API_URL}/products?limit=100`, { headers }).catch(() => ({ data: { data: [] } })),
         axios.get(`${API_URL}/orders`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/coupons`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/admin/quotations`, { headers }).catch(() => ({ data: [] })),
       ]);
       setProducts(responses[0].data?.data || []);
       setOrders(Array.isArray(responses[1].data) ? responses[1].data : []);
       setCoupons(Array.isArray(responses[2].data) ? responses[2].data : []);
+      setQuotations(Array.isArray(responses[3].data) ? responses[3].data : []);
       setShippingRates([
         { id: '1', region: 'BR', zone: 'São Paulo', min_weight: 0, max_weight: 5, base_rate: 25, per_kg_rate: 5 },
         { id: '2', region: 'BR', zone: 'Rio de Janeiro', min_weight: 0, max_weight: 5, base_rate: 30, per_kg_rate: 6 },
@@ -162,6 +166,17 @@ export default function AdminDashboardComplete() {
       alert('Erro ao enviar a foto: ' + (error.response?.data?.error || error.message));
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleUpdateQuotation = async (quotation, changes) => {
+    try {
+      await axios.put(`${API_URL}/admin/quotations/${quotation.id}`, changes, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      loadAllData(token);
+    } catch (error) {
+      alert('Erro ao atualizar o orçamento: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -269,6 +284,7 @@ export default function AdminDashboardComplete() {
               { id: 'dashboard', label: '📊 Dashboard' },
               { id: 'products', label: '📦 Produtos' },
               { id: 'orders', label: '📋 Pedidos' },
+              { id: 'quotations', label: `✉️ Orçamentos${quotations.filter(q => q.status === 'pending').length ? ` (${quotations.filter(q => q.status === 'pending').length})` : ''}` },
               { id: 'reviews', label: '⭐ Reviews' },
               { id: 'coupons', label: '🎟️ Cupons' },
               { id: 'shipping', label: '🚚 Frete' },
@@ -371,6 +387,68 @@ export default function AdminDashboardComplete() {
                       </table>
                     )}
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'quotations' && (
+                <div>
+                  <h2 style={{ fontFamily: 'Outfit, sans-serif', marginTop: 0 }}>Orçamentos de frete ({quotations.length})</h2>
+                  <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '13px', color: '#6b7280', marginTop: 0 }}>
+                    Pedidos de clientes cujo item não tem frete automático. Fale com o cliente (e-mail ou WhatsApp), combine o valor e registre aqui.
+                  </p>
+                  {quotations.length === 0 ? (
+                    <p style={{ fontFamily: 'Outfit, sans-serif', color: '#6b7280' }}>Nenhum pedido de orçamento ainda.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {quotations.map((q) => {
+                        const phoneDigits = String(q.customer_phone || '').replace(/\D/g, '');
+                        const whatsapp = phoneDigits.length >= 10 ? `https://wa.me/${phoneDigits.startsWith('55') ? phoneDigits : '55' + phoneDigits}` : null;
+                        const statusLabel = { pending: 'Pendente', sent: 'Respondido', closed: 'Encerrado' }[q.status] || q.status;
+                        const statusColor = { pending: '#d97706', sent: '#2563eb', closed: '#6b7280' }[q.status] || '#6b7280';
+                        return (
+                          <div key={q.id} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', fontFamily: 'Outfit, sans-serif' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                              <div>
+                                <strong>{q.customer_name}</strong>
+                                <div style={{ fontSize: '13px', marginTop: '4px' }}>
+                                  <a href={`mailto:${q.customer_email}`}>{q.customer_email}</a>
+                                  {q.customer_phone && <> · {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer">{q.customer_phone} (WhatsApp)</a> : q.customer_phone}</>}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right', fontSize: '12px', color: '#6b7280' }}>
+                                <span style={{ color: statusColor, fontWeight: 700 }}>{statusLabel}</span>
+                                <div>{q.requested_at ? new Date(q.requested_at).toLocaleString('pt-BR') : ''}</div>
+                              </div>
+                            </div>
+                            {q.product_name && <div style={{ fontSize: '13px', marginTop: '10px' }}>Produto: <strong>{q.product_name}</strong>{q.quantity > 1 ? ` × ${q.quantity}` : ''}</div>}
+                            {q.custom_description && <pre style={{ fontFamily: 'inherit', fontSize: '13px', whiteSpace: 'pre-wrap', background: '#f9fafb', padding: '10px', margin: '10px 0', borderRadius: '4px' }}>{q.custom_description}</pre>}
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <input
+                                type="number" min="0" step="0.01" placeholder="Valor do frete (R$)"
+                                value={quotePrices[q.id] !== undefined ? quotePrices[q.id] : (q.quote_price ?? '')}
+                                onChange={(e) => setQuotePrices({ ...quotePrices, [q.id]: e.target.value })}
+                                style={{ ...inputStyle, width: '180px' }}
+                              />
+                              <button
+                                onClick={() => handleUpdateQuotation(q, { quote_price: quotePrices[q.id] !== undefined ? quotePrices[q.id] : q.quote_price, status: 'sent' })}
+                                style={{ padding: '8px 14px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                              >
+                                Registrar valor e marcar respondido
+                              </button>
+                              {q.status !== 'closed' && (
+                                <button
+                                  onClick={() => handleUpdateQuotation(q, { status: 'closed' })}
+                                  style={{ padding: '8px 14px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Encerrar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
