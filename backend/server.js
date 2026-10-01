@@ -16,11 +16,7 @@ app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'alessandra_ecommerce',
+  connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'password'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'alessandra_ecommerce'}`,
   ...(process.env.NODE_ENV === 'production' && { ssl: { rejectUnauthorized: false } })
 });
 
@@ -55,6 +51,16 @@ app.use('/api/wishlist', require('./routes/wishlist'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/variants', require('./routes/variants'));
 app.use('/api/coupons', require('./routes/coupons'));
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Alessandra E-commerce API',
+    version: '1.0.0',
+    status: 'running',
+    timestamp: new Date()
+  });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
