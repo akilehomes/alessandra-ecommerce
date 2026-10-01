@@ -53,23 +53,30 @@ async function handlePaymentSucceeded(paymentIntent) {
 
   if (!orderId) return;
 
-  // Atualizar order
-  await pool.query(
-    `UPDATE orders SET status = 'paid', payment_id = $1, updated_at = NOW() WHERE id = $2`,
-    [paymentIntent.id, orderId]
+  // Marca como pago so se o valor recebido bate com o total do pedido; idempotente
+  const updated = await pool.query(
+    `UPDATE orders SET status = 'paid', payment_id = $1, updated_at = NOW()
+     WHERE id = $2 AND status <> 'paid' AND ROUND(total * 100) = $3
+     RETURNING *`,
+    [paymentIntent.id, orderId, paymentIntent.amount_received]
   );
 
-  // Buscar order
-  const result = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId]);
-  if (result.rows.length > 0) {
-    const order = result.rows[0];
-    await sendOrderConfirmation(order, customerEmail);
-
-    // Processar com Agente (automações)
-    agentService.processOrder(order).catch(err =>
-      console.error('Agent processing error:', err)
-    );
+  if (updated.rows.length === 0) {
+    console.log(`ℹ️ Pedido ${orderId} ja estava pago ou valor nao confere; nada a fazer`);
+    return;
   }
+
+  const order = updated.rows[0];
+  try {
+    await sendOrderConfirmation(order, customerEmail || order.customer_email);
+  } catch (err) {
+    console.error('Order confirmation email failed:', err.message);
+  }
+
+  // Processar com Agente (automações)
+  agentService.processOrder(order).catch(err =>
+    console.error('Agent processing error:', err)
+  );
 
   console.log(`✅ Pagamento confirmado para pedido ${orderId}`);
 }
@@ -79,12 +86,8 @@ async function handlePaymentFailed(paymentIntent) {
 
   if (!orderId) return;
 
-  await pool.query(
-    `UPDATE orders SET status = 'failed', updated_at = NOW() WHERE id = $1`,
-    [orderId]
-  );
-
-  console.log(`❌ Pagamento falhou para pedido ${orderId}`);
+  // Mantem o pedido 'pending': o cliente pode tentar de novo com outro cartao
+  console.log(`❌ Tentativa de pagamento falhou para pedido ${orderId}`);
 }
 
 async function handleRefund(charge) {

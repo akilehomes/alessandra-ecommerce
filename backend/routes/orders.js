@@ -18,10 +18,9 @@ router.post('/', async (req, res) => {
       shippingAddress,
       paymentMethod,
       couponCode,
-      subtotal,
-      tax,
-      shippingCost,
+      shippingCost: clientShippingCost,
       currency,
+      region,
     } = req.body;
 
     // Validate required fields
@@ -43,6 +42,38 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Cart is empty' });
     }
 
+    // Precos, nomes e subtotal vem SEMPRE do banco; o cliente so informa produto e quantidade
+    const requested = cartItems.map((item) => ({
+      productId: item.product_id || item.id,
+      quantity: Math.floor(Number(item.quantity)),
+    }));
+    if (requested.some((r) => !r.productId || !Number.isFinite(r.quantity) || r.quantity < 1 || r.quantity > 100)) {
+      return res.status(400).json({ error: 'Invalid cart items' });
+    }
+    const productIds = [...new Set(requested.map((r) => r.productId))];
+    let productRows;
+    try {
+      productRows = (await pool.query(
+        'SELECT id, name, price FROM products WHERE id = ANY($1::uuid[])',
+        [productIds]
+      )).rows;
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid cart items' });
+    }
+    if (productRows.length !== productIds.length) {
+      return res.status(400).json({ error: 'One or more products are unavailable' });
+    }
+    const byId = new Map(productRows.map((p) => [p.id, p]));
+    cartItems = requested.map((r) => {
+      const p = byId.get(r.productId);
+      return { product_id: p.id, product_name: p.name, name: p.name, price: Number(p.price), quantity: r.quantity };
+    });
+
+    const TAX_RATE_BY_REGION = { BR: 0.18, PT: 0.23, EU: 0.21 };
+    const subtotal = Math.round(cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100) / 100;
+    const tax = Math.round(subtotal * (TAX_RATE_BY_REGION[region] ?? TAX_RATE_BY_REGION.BR) * 100) / 100;
+    const shippingCost = Math.max(0, Number(clientShippingCost) || 0); // TODO: recalcular frete no servidor
+
     // Calculate discount if coupon provided
     let discount = 0;
     if (couponCode) {
@@ -54,9 +85,9 @@ router.post('/', async (req, res) => {
       if (couponResult.rows.length > 0) {
         const coupon = couponResult.rows[0];
         if (coupon.discount_type === 'percentage') {
-          discount = (subtotal * coupon.discount_value) / 100;
+          discount = (subtotal * Number(coupon.discount_value)) / 100;
         } else {
-          discount = coupon.discount_value;
+          discount = Number(coupon.discount_value);
         }
 
         // Increment coupon usage
@@ -68,7 +99,8 @@ router.post('/', async (req, res) => {
     }
 
     // Calculate total
-    const total = subtotal + (shippingCost || 0) + (tax || 0) - discount;
+    discount = Math.min(Math.max(0, Math.round(discount * 100) / 100), subtotal);
+    const total = Math.round((subtotal + shippingCost + tax - discount) * 100) / 100;
     const orderNumber = `ORD-${Date.now()}`;
 
     // Create order

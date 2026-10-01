@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
 import { useAuthStore } from '../store/authStore';
@@ -10,13 +12,76 @@ import ShippingSelector from '../components/ShippingSelector';
 import './Checkout.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-const STRIPE_PUBLIC_KEY = 'pk_test_51ULLcGLpzNv0TRlc3rG6jD6lmqBkT05aFnj4t81tmKDwhmDqO7MVsnTebqsJOzQTLCYmGhU3ZE0t8aq9vtLTxTW3003gLb1wUN';
+// A chave publica vem do backend, sempre do mesmo par da chave secreta
+const stripePromise = axios
+  .get(`${API_URL}/payment/config`)
+  .then((res) => loadStripe(res.data.publishableKey))
+  .catch(() => null);
 
 const REGION_CONFIG = {
   BR: { name: 'Brasil', currency: 'BRL', symbol: 'R$', taxRate: 0.18, country: 'BR' },
   PT: { name: 'Portugal', currency: 'EUR', symbol: '€', taxRate: 0.23, country: 'PT' },
   EU: { name: 'Europa', currency: 'EUR', symbol: '€', taxRate: 0.21, country: 'EU' },
 };
+
+function PaymentForm({ orderId, label, onBack, onPaid, setError }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setBusy(true);
+    setError(null);
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: 'if_required',
+      confirmParams: {
+        return_url: `${window.location.origin}/checkout/success?orderId=${orderId}`,
+      },
+    });
+
+    if (error) {
+      setError(error.message || 'Payment failed');
+      setBusy(false);
+      return;
+    }
+
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      try {
+        await axios.post(`${API_URL}/payment/stripe/confirm`, {
+          paymentIntentId: paymentIntent.id,
+          orderId,
+        });
+      } catch (err) {
+        // O webhook do Stripe tambem confirma o pedido; nao bloqueia o cliente
+        console.error('Confirm call failed:', err);
+      }
+      onPaid(orderId);
+      return;
+    }
+
+    setError('Payment is being processed. You will receive an email when it is confirmed.');
+    setBusy(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <PaymentElement />
+      <div className="button-group" style={{ marginTop: '24px' }}>
+        <button type="button" className="btn-secondary" onClick={onBack} disabled={busy}>
+          Back
+        </button>
+        <button type="submit" className="btn-primary" disabled={!stripe || busy}>
+          {busy ? 'Processing...' : label}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -27,7 +92,7 @@ export default function Checkout() {
   const [step, setStep] = useState(1); // 1: Address, 2: Shipping, 3: Review & Pay
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [stripe, setStripe] = useState(null);
+  const [payment, setPayment] = useState(null); // { orderId, clientSecret }
 
   const [formData, setFormData] = useState({
     customerEmail: user?.email || '',
@@ -46,18 +111,7 @@ export default function Checkout() {
     options: [],
   });
 
-  const [cardData, setCardData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvc: '',
-  });
 
-  // Initialize Stripe
-  useEffect(() => {
-    if (window.Stripe) {
-      setStripe(window.Stripe(STRIPE_PUBLIC_KEY));
-    }
-  }, []);
 
   // Check authentication
   useEffect(() => {
@@ -69,27 +123,6 @@ export default function Checkout() {
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleCardChange = (e) => {
-    let { name, value } = e.target;
-
-    if (name === 'cardNumber') {
-      value = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-    }
-
-    if (name === 'expiry') {
-      value = value.replace(/\D/g, '');
-      if (value.length >= 2) {
-        value = value.substring(0, 2) + '/' + value.substring(2, 4);
-      }
-    }
-
-    if (name === 'cvc') {
-      value = value.replace(/\D/g, '').substring(0, 3);
-    }
-
-    setCardData({ ...cardData, [name]: value });
   };
 
   const validateAddress = () => {
@@ -148,14 +181,8 @@ export default function Checkout() {
     return { subtotal, tax, shipping, finalTotal };
   };
 
-  const handleProcessPayment = async (e) => {
-    e.preventDefault();
-
-    if (!cardData.cardNumber || !cardData.expiry || !cardData.cvc) {
-      setError('Please fill in all card details');
-      return;
-    }
-
+  // Cria o pedido (o servidor recalcula precos) e a cobranca; so entao mostra o formulario do Stripe
+  const startPayment = async () => {
     if (!shippingData.selectedMethod) {
       setError('Please select a shipping method');
       return;
@@ -165,19 +192,13 @@ export default function Checkout() {
       setLoading(true);
       setError(null);
 
-      const { subtotal, tax, shipping, finalTotal } = calculateTotals();
-
-      // Create order
       const orderResponse = await axios.post(`${API_URL}/orders`, {
         cartId,
         items: items.map(item => ({
           product_id: item.productId || item.id || item.product_id,
-          product_name: item.name || item.product_name,
           quantity: item.quantity,
-          price: item.price,
-          weight: item.weight || 1,
         })),
-        userId: user.id,
+        userId: user?.id,
         customerEmail: formData.customerEmail,
         customerName: formData.customerName,
         customerPhone: formData.customerPhone,
@@ -188,42 +209,31 @@ export default function Checkout() {
           state: formData.state,
           cep: formData.cep,
         },
-        subtotal,
-        tax,
-        shippingCost: shipping,
-        total: finalTotal,
+        shippingCost: shippingData.cost,
         paymentMethod: 'stripe',
         currency: regionConfig.currency,
+        region,
       }, {
         headers: getAuthHeader(),
       });
 
       const orderId = orderResponse.data.orderId || orderResponse.data.id;
 
-      // Create payment intent
-      const paymentResponse = await axios.post(`${API_URL}/payment/stripe/create-intent`, {
-        amount: Math.round(finalTotal * 100),
-        orderId,
-        customerEmail: formData.customerEmail,
-        currency: regionConfig.currency.toLowerCase(),
-      });
+      const intentResponse = await axios.post(`${API_URL}/payment/stripe/create-intent`, { orderId });
 
-      // Simulate payment confirmation (in production use Stripe.js)
-      await axios.post(`${API_URL}/payment/stripe/confirm`, {
-        paymentIntentId: 'sim_test_' + Date.now(),
-        orderId,
-      });
-
-      clearCart();
-      navigate('/checkout/success', { state: { orderId } });
-    } catch (err) {
-      setError(err.response?.data?.error || 'Payment processing failed');
+      setPayment({ orderId, clientSecret: intentResponse.data.clientSecret });
       setStep(3);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not start payment');
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePaid = (orderId) => {
+    clearCart();
+    navigate(`/checkout/success?orderId=${orderId}`);
+  };
   const { subtotal, tax, shipping, finalTotal } = calculateTotals();
 
   if (!items || items.length === 0) {
@@ -388,67 +398,28 @@ export default function Checkout() {
                 </button>
                 <button
                   className="btn-primary"
-                  onClick={() => setStep(3)}
-                  disabled={!shippingData.selectedMethod}
+                  onClick={startPayment}
+                  disabled={!shippingData.selectedMethod || loading}
                 >
-                  Continue to Payment
+                  {loading ? 'Preparing payment...' : 'Continue to Payment'}
                 </button>
               </div>
             </div>
           )}
 
           {/* Step 3: Payment */}
-          {step === 3 && (
+          {step === 3 && payment && (
             <div className="checkout-step">
               <h2>Payment Details</h2>
-              <form onSubmit={handleProcessPayment}>
-                <div className="form-group full">
-                  <label>Card Number</label>
-                  <input
-                    type="text"
-                    name="cardNumber"
-                    value={cardData.cardNumber}
-                    onChange={handleCardChange}
-                    placeholder="1234 5678 9012 3456"
-                    maxLength="19"
-                  />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Expiry Date</label>
-                    <input
-                      type="text"
-                      name="expiry"
-                      value={cardData.expiry}
-                      onChange={handleCardChange}
-                      placeholder="MM/YY"
-                      maxLength="5"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>CVC</label>
-                    <input
-                      type="text"
-                      name="cvc"
-                      value={cardData.cvc}
-                      onChange={handleCardChange}
-                      placeholder="123"
-                      maxLength="3"
-                    />
-                  </div>
-                </div>
-
-                <div className="button-group">
-                  <button type="button" className="btn-secondary" onClick={() => setStep(2)}>
-                    Back
-                  </button>
-                  <button type="submit" className="btn-primary" disabled={loading}>
-                    {loading ? 'Processing...' : `Pay ${regionConfig.symbol} ${finalTotal.toFixed(2)}`}
-                  </button>
-                </div>
-              </form>
+              <Elements stripe={stripePromise} options={{ clientSecret: payment.clientSecret }}>
+                <PaymentForm
+                  orderId={payment.orderId}
+                  label={`Pay ${regionConfig.symbol} ${finalTotal.toFixed(2)}`}
+                  onBack={() => { setPayment(null); setStep(2); }}
+                  onPaid={handlePaid}
+                  setError={setError}
+                />
+              </Elements>
             </div>
           )}
         </div>

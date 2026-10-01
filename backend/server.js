@@ -5,6 +5,9 @@ const { Pool } = require('pg');
 
 const app = express();
 
+// Webhooks precisam do corpo bruto para validar a assinatura: antes do express.json()
+app.use('/webhooks', require('./routes/webhooks'));
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -50,7 +53,6 @@ app.use('/api/shipping-integration', require('./routes/shippingIntegration'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/taxes', require('./routes/taxes'));
 app.use('/api/currency', require('./routes/currency'));
-app.use('/webhooks', require('./routes/webhooks'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notifications', require('./routes/notifications'));

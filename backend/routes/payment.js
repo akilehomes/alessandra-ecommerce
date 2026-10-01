@@ -47,30 +47,76 @@ router.post('/process', async (req, res) => {
   }
 });
 
+// Marca o pedido como pago uma unica vez e envia o e-mail so na primeira vez
+// (a confirmacao pode chegar pelo navegador e pelo webhook).
+async function markOrderPaid(orderId, paymentId) {
+  const updated = await pool.query(
+    `UPDATE orders
+     SET status = 'paid', payment_id = $1, updated_at = NOW()
+     WHERE id = $2 AND status <> 'paid'
+     RETURNING *`,
+    [paymentId, orderId]
+  );
+  if (updated.rows.length === 0) return false;
+  const order = updated.rows[0];
+  try {
+    await sendOrderConfirmation(order, order.customer_email);
+  } catch (err) {
+    console.error('Order confirmation email failed:', err.message);
+  }
+  return true;
+}
+
+const CURRENCIES = { BRL: 'brl', EUR: 'eur' };
+
+// Chave publica do Stripe servida pelo backend: garante o mesmo par da chave secreta
+router.get('/config', (req, res) => {
+  if (!process.env.STRIPE_PUBLIC_KEY) {
+    return res.status(503).json({ error: 'Payments are not configured' });
+  }
+  res.json({ publishableKey: process.env.STRIPE_PUBLIC_KEY });
+});
+
 // POST create payment intent (Stripe)
+// O valor vem do pedido salvo no banco, nunca do navegador.
 router.post('/stripe/create-intent', async (req, res) => {
   try {
-    const { amount, orderId, customerEmail } = req.body;
+    const { orderId } = req.body;
+    if (!orderId) return res.status(400).json({ error: 'orderId is required' });
+
+    const orderResult = await pool.query(
+      'SELECT id, total, status, customer_email, region FROM orders WHERE id = $1',
+      [orderId]
+    );
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+
+    const order = orderResult.rows[0];
+    if (order.status !== 'pending') {
+      return res.status(409).json({ error: 'Order is not awaiting payment' });
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: 'brl',
-      metadata: {
-        orderId,
-        customerEmail,
-      },
+      amount: Math.round(Number(order.total) * 100),
+      currency: CURRENCIES[order.region] || 'brl',
+      automatic_payment_methods: { enabled: true },
+      receipt_email: order.customer_email,
+      metadata: { orderId: order.id, customerEmail: order.customer_email },
     });
+
+    await pool.query('UPDATE orders SET payment_id = $1 WHERE id = $2', [paymentIntent.id, order.id]);
 
     res.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Create payment intent error:', error.message);
+    res.status(500).json({ error: 'Could not start payment' });
   }
 });
 
 // POST confirm payment (Stripe)
+// Nunca confia no navegador: consulta o Stripe e confere pedido e valor.
 router.post('/stripe/confirm', async (req, res) => {
   try {
     const { paymentIntentId, orderId } = req.body;
@@ -79,76 +125,35 @@ router.post('/stripe/confirm', async (req, res) => {
       return res.status(400).json({ error: 'paymentIntentId and orderId are required' });
     }
 
-    // Modo simulação para testes (sem Stripe Elements) - bloqueado fora do dev
+    // Modo simulacao (somente dev, ligado por ALLOW_PAYMENT_SIMULATION)
     if (paymentIntentId.startsWith('sim_test_')) {
       if (!SIMULATION_ENABLED) {
         return res.status(403).json({ error: 'Payment simulation is disabled' });
       }
-      console.log('✅ [SIM MODE] Confirmando pagamento:', paymentIntentId);
-
-      // Atualizar status do pedido
-      await pool.query(
-        `UPDATE orders
-         SET status = 'paid', payment_id = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [paymentIntentId, orderId]
-      );
-
-      // Enviar email de confirmação
-      const orderResult = await pool.query(
-        'SELECT * FROM orders WHERE id = $1',
-        [orderId]
-      );
-
-      if (orderResult.rows.length > 0) {
-        const order = orderResult.rows[0];
-        await sendOrderConfirmation(order, order.customer_email);
-        console.log('✉️ Email enviado para:', order.customer_email);
-      }
-
-      return res.json({
-        status: 'success',
-        message: 'Payment confirmed (simulation mode)',
-        orderId,
-      });
+      await markOrderPaid(orderId, paymentIntentId);
+      return res.json({ status: 'success', message: 'Payment confirmed (simulation mode)', orderId });
     }
 
-    // Modo produção: verificar com Stripe
+    const orderResult = await pool.query('SELECT id, total, status FROM orders WHERE id = $1', [orderId]);
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const expectedAmount = Math.round(Number(order.total) * 100);
 
-    if (paymentIntent.status === 'succeeded') {
-      // Update order status
-      await pool.query(
-        `UPDATE orders
-         SET status = 'paid', payment_id = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [paymentIntentId, orderId]
-      );
-
-      // Fetch order details to send confirmation email
-      const orderResult = await pool.query(
-        'SELECT * FROM orders WHERE id = $1',
-        [orderId]
-      );
-
-      if (orderResult.rows.length > 0) {
-        const order = orderResult.rows[0];
-        await sendOrderConfirmation(order, order.customer_email);
-      }
-
-      res.json({
-        status: 'success',
-        message: 'Payment confirmed',
-        orderId,
-      });
-    } else {
-      res.status(400).json({
-        status: 'failed',
-        message: 'Payment not completed',
-      });
+    if (
+      paymentIntent.status !== 'succeeded' ||
+      paymentIntent.metadata.orderId !== order.id ||
+      paymentIntent.amount_received !== expectedAmount
+    ) {
+      return res.status(400).json({ status: 'failed', message: 'Payment not completed' });
     }
+
+    await markOrderPaid(order.id, paymentIntent.id);
+    res.json({ status: 'success', message: 'Payment confirmed', orderId: order.id });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Confirm payment error:', error.message);
+    res.status(500).json({ error: 'Could not confirm payment' });
   }
 });
 

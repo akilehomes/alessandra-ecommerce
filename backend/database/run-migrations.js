@@ -22,6 +22,7 @@ const FILES = [
   'migration-variants.sql',
   'migration-wishlist.sql',
   'migration-shipping-taxes.sql',
+  'migration-carts-defaults.sql',
 ];
 
 async function main() {

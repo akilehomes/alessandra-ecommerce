@@ -13,11 +13,15 @@ async function calculateShipping(destZipCode, weight, dimensions = {}) {
       return generateMockShippingOptions(destZipCode, weight);
     }
 
-    // Aqui irá a integração real com Melhor Envio
     const options = await callMelhorEnvioAPI(destZipCode, weight, dimensions);
     return options;
   } catch (error) {
     console.error('❌ Melhor Envio Error:', error.message);
+    // Fallback simulado somente em dev (ALLOW_SHIPPING_MOCK=true); em producao o erro sobe
+    if (process.env.ALLOW_SHIPPING_MOCK === 'true') {
+      console.warn('⚠️ Usando frete simulado (ALLOW_SHIPPING_MOCK)');
+      return generateMockShippingOptions(destZipCode, weight);
+    }
     throw error;
   }
 }
@@ -57,30 +61,56 @@ function generateMockShippingOptions(destZipCode, weight) {
   ];
 }
 
+// Producao: https://melhorenvio.com.br/api/v2/me/shipment/calculate
+// Sandbox:  https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate (token do sandbox)
+const MELHOR_ENVIO_URL =
+  process.env.MELHOR_ENVIO_URL || 'https://melhorenvio.com.br/api/v2/me/shipment/calculate';
+
 async function callMelhorEnvioAPI(destZipCode, weight, dimensions) {
-  const response = await fetch('https://api.melhorenvio.com.br/v2/shipment/calculate', {
+  const response = await fetch(MELHOR_ENVIO_URL, {
     method: 'POST',
     headers: {
+      'Accept': 'application/json',
       'Authorization': `Bearer ${process.env.MELHOR_ENVIO_TOKEN}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'User-Agent': `Alessandra Zanetti (${process.env.FROM_EMAIL || 'contato@alessandrazanetti.com'})`,
     },
     body: JSON.stringify({
-      from: { postal_code: ORIGIN_CEP, state: ORIGIN_STATE },
-      to: { postal_code: destZipCode },
+      from: { postal_code: ORIGIN_CEP },
+      to: { postal_code: String(destZipCode).replace(/\D/g, '') },
       products: [{
+        id: '1',
         weight,
         width: dimensions.width || 10,
         height: dimensions.height || 10,
         length: dimensions.length || 20,
-      }]
-    })
+        insurance_value: 0,
+        quantity: 1,
+      }],
+    }),
   });
 
   if (!response.ok) {
     throw new Error(`Melhor Envio API Error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  const services = await response.json();
+  const options = (Array.isArray(services) ? services : [])
+    .filter((svc) => !svc.error && Number(svc.custom_price || svc.price) > 0)
+    .map((svc) => ({
+      id: `melhor-envio-${svc.id}`,
+      carrier: svc.company?.name || svc.name,
+      service: svc.name,
+      price: Number(svc.custom_price || svc.price),
+      delivery_time: svc.custom_delivery_time || svc.delivery_time,
+      delivery_date: getDeliveryDate(svc.custom_delivery_time || svc.delivery_time || 0),
+      currency: 'BRL',
+    }));
+
+  if (options.length === 0) {
+    throw new Error('Melhor Envio returned no shipping options');
+  }
+  return options;
 }
 
 function getDeliveryDate(daysToAdd) {
