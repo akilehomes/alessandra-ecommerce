@@ -5,9 +5,24 @@ const { Pool } = require('pg');
 
 const app = express();
 
-// Atras do proxy do Railway: sem isto todos os visitantes aparecem com o mesmo IP
-// e os limites de requisicao seriam compartilhados por todos
-app.set('trust proxy', 1);
+// Atras de proxies (Railway): quantos saltos confiar para achar o IP real do visitante.
+// Se for baixo demais, o IP muda a cada requisicao e os limites nunca acumulam;
+// se for alto demais, o visitante consegue forjar o IP. Ajuste com TRUST_PROXY_HOPS.
+const hops = Number.parseInt(process.env.TRUST_PROXY_HOPS || '2', 10);
+app.set('trust proxy', Number.isInteger(hops) && hops >= 0 ? hops : 2);
+
+// Diagnostico opcional (ALLOW_IP_DEBUG=true): mostra o IP que o servidor enxerga. Deixe desligado.
+if (process.env.ALLOW_IP_DEBUG === 'true') {
+  app.get('/api/_ip', (req, res) => {
+    res.json({
+      ip: req.ip,
+      hops: app.get('trust proxy'),
+      xForwardedFor: req.headers['x-forwarded-for'] || null,
+      xRealIp: req.headers['x-real-ip'] || null,
+      remote: req.socket.remoteAddress,
+    });
+  });
+}
 
 // Webhooks precisam do corpo bruto para validar a assinatura: antes do express.json()
 app.use('/webhooks', require('./routes/webhooks'));
