@@ -135,32 +135,12 @@ export default function Checkout() {
     return true;
   };
 
-  const handleCalculateShipping = async () => {
+  const handleCalculateShipping = () => {
     if (!validateAddress()) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await axios.post(`${API_URL}/shipping/calculate`, {
-        destination: formData.city,
-        weight: items.reduce((sum, item) => sum + (item.weight || 1) * item.quantity, 0),
-        items: items.map(item => ({ weight: item.weight || 1, quantity: item.quantity })),
-        region: region,
-      });
-
-      setShippingData({
-        selectedMethod: response.data.options[0]?.id,
-        cost: response.data.options[0]?.price || 0,
-        options: response.data.options,
-      });
-
-      setStep(2);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to calculate shipping');
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+    // As opcoes reais de frete sao carregadas pelo ShippingSelector no passo seguinte
+    setShippingData({ selectedMethod: null, cost: 0, options: [] });
+    setStep(2);
   };
 
   const handleShippingMethodChange = (methodId) => {
@@ -211,7 +191,7 @@ export default function Checkout() {
           state: formData.state,
           cep: formData.cep,
         },
-        shippingCost: shippingData.cost,
+        shippingMethodId: shippingData.selectedMethod,
         paymentMethod: 'stripe',
         currency: regionConfig.currency,
         region,
@@ -397,7 +377,10 @@ export default function Checkout() {
               <ShippingSelector
                 country={region}
                 zipCode={formData.cep}
-                cartWeight={items.reduce((sum, item) => sum + (item.weight || 1) * item.quantity, 0)}
+                items={items.map((item) => ({
+                  productId: item.productId || item.id || item.product_id,
+                  quantity: item.quantity,
+                }))}
                 onShippingSelect={(option) => {
                   setShippingData({
                     selectedMethod: option.id,

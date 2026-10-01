@@ -2,15 +2,25 @@
 const express = require('express');
 const router = express.Router();
 const shippingRouter = require('../services/shippingRouter');
+const { quoteForCart } = require('../services/shippingQuote');
 
 // POST /api/shipping/calculate
 // Calcula opções de frete baseado no país e CEP de destino
 // Body: { country, zipCode, weight, dimensions: { width, height, length } }
 router.post('/calculate', async (req, res) => {
   try {
-    const { country, zipCode, weight, dimensions } = req.body;
+    const { country, zipCode, weight, dimensions, items } = req.body;
 
-    // Validação básica
+    // Novo formato: o servidor le peso e medidas dos produtos no banco
+    if (Array.isArray(items)) {
+      if (!country || !zipCode) {
+        return res.status(400).json({ error: 'Missing required fields: country, zipCode, items' });
+      }
+      const options = await quoteForCart({ items, zipCode, country });
+      return res.json({ country, zipCode, options: options || [], timestamp: new Date() });
+    }
+
+    // Formato antigo (peso informado pelo cliente)
     if (!country || !zipCode || !weight) {
       return res.status(400).json({
         error: 'Missing required fields: country, zipCode, weight',
@@ -40,7 +50,7 @@ router.post('/calculate', async (req, res) => {
     });
   } catch (error) {
     console.error('Shipping calculation error:', error.message);
-    res.status(400).json({
+    res.status(error.status || 400).json({
       error: error.message || 'Failed to calculate shipping',
     });
   }

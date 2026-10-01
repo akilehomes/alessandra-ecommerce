@@ -8,12 +8,14 @@ import ReviewStats from '../components/ReviewStats';
 import ReviewForm from '../components/ReviewForm';
 import ReviewsList from '../components/ReviewsList';
 import WishlistButton from '../components/WishlistButton';
+import AddedToCartModal from '../components/AddedToCartModal';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [addedItem, setAddedItem] = useState(null);
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,12 @@ export default function ProductDetail() {
         image_url: product.image_url,
         quantity: parseInt(quantity),
       });
-      alert(`${quantity}x ${product.name} adicionado ao carrinho!`);
+      setAddedItem({
+        name: product.name,
+        price: region === 'portugal' ? Number(product.price) * 0.20 : Number(product.price),
+        image_url: product.image_url,
+        quantity: parseInt(quantity),
+      });
     }
   };
 
@@ -457,6 +464,13 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      <AddedToCartModal
+        item={addedItem}
+        symbol={currency}
+        onContinue={() => setAddedItem(null)}
+        onGoToCart={() => navigate('/cart')}
+      />
     </div>
   );
 }

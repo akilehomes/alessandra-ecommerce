@@ -1,29 +1,41 @@
 // Melhor Envio Service - Brasil
 // Integração com API Melhor Envio (mockado até ter chave real)
 
-const ORIGIN_CEP = '01047912'; // Alessandra - São Paulo
+const ORIGIN_CEP = (process.env.SHIPPING_ORIGIN_CEP || '01047912').replace(/\D/g, ''); // Alessandra - São Paulo
 const ORIGIN_STATE = 'SP';
 
-async function calculateShipping(destZipCode, weight, dimensions = {}) {
+// Cotacao a partir de uma lista de produtos reais:
+// [{ id, weight (kg), width, height, length (cm), insurance_value (R$ por unidade), quantity }]
+async function calculateShippingForProducts(destZipCode, products) {
+  const totalWeight = products.reduce((sum, p) => sum + p.weight * p.quantity, 0);
   try {
-    // TODO: Quando tiver chave, remover esta verificação mock
-    const isMock = !process.env.MELHOR_ENVIO_TOKEN;
-
-    if (isMock) {
-      return generateMockShippingOptions(destZipCode, weight);
+    // TODO: Quando tiver chave, remover esta verificacao mock
+    if (!process.env.MELHOR_ENVIO_TOKEN) {
+      return generateMockShippingOptions(destZipCode, totalWeight);
     }
-
-    const options = await callMelhorEnvioAPI(destZipCode, weight, dimensions);
-    return options;
+    return await callMelhorEnvioAPI(destZipCode, products);
   } catch (error) {
     console.error('❌ Melhor Envio Error:', error.message);
     // Fallback simulado somente em dev (ALLOW_SHIPPING_MOCK=true); em producao o erro sobe
     if (process.env.ALLOW_SHIPPING_MOCK === 'true') {
       console.warn('⚠️ Usando frete simulado (ALLOW_SHIPPING_MOCK)');
-      return generateMockShippingOptions(destZipCode, weight);
+      return generateMockShippingOptions(destZipCode, totalWeight);
     }
     throw error;
   }
+}
+
+// Compatibilidade: cotacao de um unico volume
+async function calculateShipping(destZipCode, weight, dimensions = {}) {
+  return calculateShippingForProducts(destZipCode, [{
+    id: '1',
+    weight,
+    width: dimensions.width || 10,
+    height: dimensions.height || 10,
+    length: dimensions.length || 20,
+    insurance_value: 0,
+    quantity: 1,
+  }]);
 }
 
 function generateMockShippingOptions(destZipCode, weight) {
@@ -66,7 +78,12 @@ function generateMockShippingOptions(destZipCode, weight) {
 const MELHOR_ENVIO_URL =
   process.env.MELHOR_ENVIO_URL || 'https://melhorenvio.com.br/api/v2/me/shipment/calculate';
 
-async function callMelhorEnvioAPI(destZipCode, weight, dimensions) {
+// Minimos aceitos pelas transportadoras (evita recusa da API por medidas muito pequenas)
+const MIN_WIDTH = 11;
+const MIN_HEIGHT = 2;
+const MIN_LENGTH = 16;
+
+async function callMelhorEnvioAPI(destZipCode, products) {
   const response = await fetch(MELHOR_ENVIO_URL, {
     method: 'POST',
     headers: {
@@ -78,15 +95,15 @@ async function callMelhorEnvioAPI(destZipCode, weight, dimensions) {
     body: JSON.stringify({
       from: { postal_code: ORIGIN_CEP },
       to: { postal_code: String(destZipCode).replace(/\D/g, '') },
-      products: [{
-        id: '1',
-        weight,
-        width: dimensions.width || 10,
-        height: dimensions.height || 10,
-        length: dimensions.length || 20,
-        insurance_value: 0,
-        quantity: 1,
-      }],
+      products: products.map((p) => ({
+        id: String(p.id),
+        weight: Math.max(0.1, Number(p.weight) || 0.1),
+        width: Math.max(MIN_WIDTH, Math.ceil(Number(p.width) || 0)),
+        height: Math.max(MIN_HEIGHT, Math.ceil(Number(p.height) || 0)),
+        length: Math.max(MIN_LENGTH, Math.ceil(Number(p.length) || 0)),
+        insurance_value: Math.max(0, Number(p.insurance_value) || 0),
+        quantity: Math.max(1, Math.floor(Number(p.quantity) || 1)),
+      })),
     }),
   });
 
@@ -121,4 +138,5 @@ function getDeliveryDate(daysToAdd) {
 
 module.exports = {
   calculateShipping,
+  calculateShippingForProducts,
 };

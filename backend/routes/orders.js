@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { pool } = require('../server');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
+const { quoteForCart } = require('../services/shippingQuote');
 
 // POST create order from cart
 router.post('/', async (req, res) => {
@@ -19,6 +20,7 @@ router.post('/', async (req, res) => {
       paymentMethod,
       couponCode,
       shippingCost: clientShippingCost,
+      shippingMethodId,
       currency,
       region,
     } = req.body;
@@ -85,7 +87,32 @@ router.post('/', async (req, res) => {
     const TAX_RATE_BY_REGION = { BR: 0.18, PT: 0.23, EU: 0.21 };
     const subtotal = Math.round(cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100) / 100;
     const tax = Math.round(subtotal * (TAX_RATE_BY_REGION[region] ?? TAX_RATE_BY_REGION.BR) * 100) / 100;
-    const shippingCost = Math.max(0, Number(clientShippingCost) || 0); // TODO: recalcular frete no servidor
+
+    // Frete: no Brasil o servidor cota de novo e so aceita uma opcao que ele mesmo calculou
+    let shippingCost;
+    if ((region || 'BR') === 'BR') {
+      if (!shippingMethodId) {
+        return res.status(400).json({ error: 'A shipping method is required' });
+      }
+      let quoted;
+      try {
+        quoted = await quoteForCart({
+          items: cartItems.map((i) => ({ productId: i.product_id, quantity: i.quantity })),
+          zipCode: address.cep,
+          country: 'BR',
+        });
+      } catch (e) {
+        console.error('Shipping re-quote failed:', e.message);
+        return res.status(e.status === 400 ? 400 : 502).json({ error: 'Could not confirm the shipping price. Please try again.' });
+      }
+      const chosen = quoted.find((o) => o.id === shippingMethodId);
+      if (!chosen) {
+        return res.status(400).json({ error: 'The selected shipping option is not available. Please choose again.' });
+      }
+      shippingCost = Math.round(Number(chosen.price) * 100) / 100;
+    } else {
+      shippingCost = Math.max(0, Number(clientShippingCost) || 0); // TODO: cotar fora do Brasil no servidor
+    }
 
     // Calculate discount if coupon provided
     let discount = 0;

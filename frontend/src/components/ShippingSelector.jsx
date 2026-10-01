@@ -3,17 +3,21 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-export default function ShippingSelector({ country = 'BR', cartWeight = 1, onShippingSelect, zipCode }) {
+export default function ShippingSelector({ country = 'BR', items = [], onShippingSelect, zipCode }) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedShipping, setSelectedShipping] = useState(null);
 
+  // O servidor le peso e medidas no banco; aqui so vao produto e quantidade
+  const itemsKey = JSON.stringify(items.map((i) => [i.productId, i.quantity]));
+
   useEffect(() => {
-    if (zipCode && cartWeight > 0) {
+    if (zipCode && items.length > 0) {
       calculateShipping();
     }
-  }, [zipCode, cartWeight, country]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zipCode, itemsKey, country]);
 
   const calculateShipping = async () => {
     try {
@@ -23,12 +27,7 @@ export default function ShippingSelector({ country = 'BR', cartWeight = 1, onShi
       const response = await axios.post(`${API_URL}/shipping-integration/calculate`, {
         country: country.toUpperCase() || 'BR',
         zipCode: zipCode.replace(/\D/g, ''),
-        weight: cartWeight,
-        dimensions: {
-          width: 20,
-          height: 20,
-          length: 30,
-        },
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
 
       setOptions(response.data.options || []);
