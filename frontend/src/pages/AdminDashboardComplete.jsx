@@ -24,6 +24,35 @@ const FormGroup = ({ label, helper, required, children }) => (
   </div>
 );
 
+const ORDER_STATUS = {
+  pending: { label: 'Aguardando pagamento', color: '#d97706' },
+  payment_processing: { label: 'Processando pagamento', color: '#d97706' },
+  paid: { label: 'Pago · enviar', color: '#2563eb' },
+  shipped: { label: 'Enviado', color: '#7c3aed' },
+  delivered: { label: 'Entregue', color: '#16a34a' },
+  cancelled: { label: 'Cancelado', color: '#6b7280' },
+  refunded: { label: 'Reembolsado', color: '#6b7280' },
+};
+
+const ORDER_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'paid', label: 'A enviar' },
+  { id: 'shipped', label: 'Enviados' },
+  { id: 'delivered', label: 'Entregues' },
+  { id: 'pending', label: 'Aguardando pagamento' },
+];
+
+const money = (v) => `R$ ${(Number(v) || 0).toFixed(2)}`;
+
+const formatOrderAddress = (addr) => {
+  if (!addr) return '';
+  const a = typeof addr === 'string' ? (() => { try { return JSON.parse(addr); } catch (e) { return null; } })() : addr;
+  if (!a || typeof a !== 'object') return String(addr);
+  const line1 = [a.street, a.number].filter(Boolean).join(', ') + (a.complement ? ` - ${a.complement}` : '');
+  const line2 = [a.city, a.state].filter(Boolean).join(' - ') + (a.cep ? ` · CEP ${a.cep}` : '');
+  return [line1, line2].filter(Boolean).join('\n');
+};
+
 export default function AdminDashboardComplete() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [token, setToken] = useState(null);
@@ -31,6 +60,11 @@ export default function AdminDashboardComplete() {
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [quotations, setQuotations] = useState([]);
+  const [ordersFilter, setOrdersFilter] = useState('paid'); // abre nos pedidos a enviar
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [orderMessage, setOrderMessage] = useState(null); // { type, text }
+  const [shipForm, setShipForm] = useState({ carrier: '', trackingNumber: '' });
   const [quotePrices, setQuotePrices] = useState({}); // valor digitado por orcamento
   const [shippingRates, setShippingRates] = useState([]);
   const [taxRates, setTaxRates] = useState([]);
@@ -71,7 +105,7 @@ export default function AdminDashboardComplete() {
       const headers = { Authorization: `Bearer ${adminToken}` };
       const responses = await Promise.all([
         axios.get(`${API_URL}/products?limit=100`, { headers }).catch(() => ({ data: { data: [] } })),
-        axios.get(`${API_URL}/orders`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/orders?limit=500`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/coupons`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/admin/quotations`, { headers }).catch(() => ({ data: [] })),
       ]);
@@ -166,6 +200,68 @@ export default function AdminDashboardComplete() {
       alert('Erro ao enviar a foto: ' + (error.response?.data?.error || error.message));
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const openOrder = async (orderId, { keepMessage = false } = {}) => {
+    if (!keepMessage) setOrderMessage(null);
+    setOrderBusy(true);
+    try {
+      const response = await axios.get(`${API_URL}/admin/orders/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const order = response.data;
+      setOrderDetail(order);
+      setShipForm({
+        carrier: order.tracking?.carrier || [order.shipping_carrier, order.shipping_service].filter(Boolean).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).join(' '),
+        trackingNumber: order.tracking?.tracking_number || '',
+      });
+    } catch (error) {
+      alert('Não foi possível abrir o pedido: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setOrderBusy(false);
+    }
+  };
+
+  const handleShipOrder = async () => {
+    setOrderBusy(true);
+    setOrderMessage(null);
+    try {
+      const response = await axios.post(
+        `${API_URL}/admin/orders/${orderDetail.id}/ship`,
+        { carrier: shipForm.carrier, trackingNumber: shipForm.trackingNumber },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setOrderMessage({
+        type: response.data.emailSent ? 'ok' : 'warn',
+        text: response.data.emailSent
+          ? 'Pedido marcado como enviado e o cliente foi avisado por e-mail.'
+          : 'Pedido marcado como enviado, mas o e-mail ao cliente não saiu. Avise o cliente por outro canal.',
+      });
+      await openOrder(orderDetail.id, { keepMessage: true });
+      loadAllData(token);
+    } catch (error) {
+      const reasons = {
+        'Invalid tracking code': 'Código de rastreio inválido (use de 4 a 60 letras ou números).',
+        'Carrier is required': 'Informe a transportadora.',
+        'Only paid orders can be shipped': 'Só é possível enviar pedidos já pagos.',
+      };
+      setOrderMessage({ type: 'error', text: reasons[error.response?.data?.error] || 'Não foi possível salvar o envio.' });
+    } finally {
+      setOrderBusy(false);
+    }
+  };
+
+  const handleDeliverOrder = async () => {
+    setOrderBusy(true);
+    setOrderMessage(null);
+    try {
+      await axios.post(`${API_URL}/admin/orders/${orderDetail.id}/deliver`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setOrderMessage({ type: 'ok', text: 'Pedido marcado como entregue.' });
+      await openOrder(orderDetail.id, { keepMessage: true });
+      loadAllData(token);
+    } catch (error) {
+      setOrderMessage({ type: 'error', text: 'Não foi possível marcar como entregue.' });
+    } finally {
+      setOrderBusy(false);
     }
   };
 
@@ -359,33 +455,55 @@ export default function AdminDashboardComplete() {
               )}
 
               {activeTab === 'orders' && (
-                <div>
-                  <h2 style={{ fontFamily: 'Outfit, sans-serif' }}>Pedidos ({orders.length})</h2>
-                  <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '20px', color: '#666', fontFamily: 'Outfit, sans-serif' }}>
-                    {orders.length === 0 ? 'Nenhum pedido' : (
-                      <table style={{ width: '100%', fontSize: '12px' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Pedido</th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Cliente</th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Total</th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Status</th>
-                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Região</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orders.map(o => (
-                            <tr key={o.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                              <td style={{ padding: '12px' }}>{o.order_number}</td>
-                              <td style={{ padding: '12px' }}>{o.customer_name}</td>
-                              <td style={{ padding: '12px' }}>R$ {parseFloat(o.total).toFixed(2)}</td>
-                              <td style={{ padding: '12px' }}><span style={{ backgroundColor: '#e0f2fe', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>{o.status}</span></td>
-                              <td style={{ padding: '12px' }}>{REGIONS[o.region] || o.region}</td>
+                <div style={{ fontFamily: 'Outfit, sans-serif' }}>
+                  <h2 style={{ marginTop: 0 }}>Pedidos ({orders.length})</h2>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    {ORDER_FILTERS.map((f) => {
+                      const count = f.id === 'all' ? orders.length : orders.filter((o) => o.status === f.id).length;
+                      const active = ordersFilter === f.id;
+                      return (
+                        <button key={f.id} onClick={() => setOrdersFilter(f.id)} style={{ padding: '8px 14px', borderRadius: '999px', border: '1px solid #000', cursor: 'pointer', background: active ? '#000' : '#fff', color: active ? '#fff' : '#000', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600 }}>
+                          {f.label} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', overflowX: 'auto' }}>
+                    {(() => {
+                      const list = ordersFilter === 'all' ? orders : orders.filter((o) => o.status === ordersFilter);
+                      if (list.length === 0) return <p style={{ padding: '20px', color: '#666', margin: 0 }}>Nenhum pedido nesta situação.</p>;
+                      return (
+                        <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+                              <th style={{ padding: '12px' }}>Pedido</th>
+                              <th style={{ padding: '12px' }}>Data</th>
+                              <th style={{ padding: '12px' }}>Cliente</th>
+                              <th style={{ padding: '12px' }}>Frete escolhido</th>
+                              <th style={{ padding: '12px' }}>Total</th>
+                              <th style={{ padding: '12px' }}>Situação</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                          </thead>
+                          <tbody>
+                            {list.map((o) => {
+                              const st = ORDER_STATUS[o.status] || { label: o.status, color: '#6b7280' };
+                              return (
+                                <tr key={o.id} onClick={() => openOrder(o.id)} style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}>
+                                  <td style={{ padding: '12px', fontWeight: 600 }}>{o.order_number}</td>
+                                  <td style={{ padding: '12px' }}>{o.created_at ? new Date(o.created_at).toLocaleDateString('pt-BR') : ''}</td>
+                                  <td style={{ padding: '12px' }}>{o.customer_name}</td>
+                                  <td style={{ padding: '12px' }}>{[o.shipping_carrier, o.shipping_service].filter(Boolean).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).join(' ') || '-'}</td>
+                                  <td style={{ padding: '12px' }}>{money(o.total)}</td>
+                                  <td style={{ padding: '12px' }}><span style={{ color: st.color, fontWeight: 700 }}>{st.label}</span></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -601,6 +719,107 @@ export default function AdminDashboardComplete() {
       </div>
 
       {/* PRODUCT MODAL */}
+      {orderDetail && (
+        <div onClick={() => setOrderDetail(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '24px 12px', overflowY: 'auto' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '8px', width: '100%', maxWidth: '720px', padding: '24px', fontFamily: 'Outfit, sans-serif' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Pedido {orderDetail.order_number}</h2>
+                <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
+                  {orderDetail.created_at ? new Date(orderDetail.created_at).toLocaleString('pt-BR') : ''} ·{' '}
+                  <strong style={{ color: (ORDER_STATUS[orderDetail.status] || {}).color }}>{(ORDER_STATUS[orderDetail.status] || {}).label || orderDetail.status}</strong>
+                </div>
+              </div>
+              <button onClick={() => setOrderDetail(null)} aria-label="Fechar" style={{ border: 'none', background: 'none', fontSize: '26px', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', margin: '20px 0' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#6b7280', marginBottom: '6px' }}>Cliente</div>
+                <div><strong>{orderDetail.customer_name}</strong></div>
+                <div style={{ fontSize: '13px' }}><a href={`mailto:${orderDetail.customer_email}`}>{orderDetail.customer_email}</a></div>
+                {orderDetail.customer_phone && (() => {
+                  const d = String(orderDetail.customer_phone).replace(/\D/g, '');
+                  return <div style={{ fontSize: '13px' }}>{d.length >= 10 ? <a href={`https://wa.me/${d.startsWith('55') ? d : '55' + d}`} target="_blank" rel="noopener noreferrer">{orderDetail.customer_phone} (WhatsApp)</a> : orderDetail.customer_phone}</div>;
+                })()}
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#6b7280', marginBottom: '6px' }}>Endereço de entrega</div>
+                <div style={{ whiteSpace: 'pre-line', fontSize: '14px' }}>{formatOrderAddress(orderDetail.shipping_address) || 'Não informado'}</div>
+              </div>
+            </div>
+
+            <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse', marginBottom: '12px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+                  <th style={{ padding: '8px 0' }}>Item</th><th>Qtd</th><th>Peso</th><th style={{ textAlign: 'right' }}>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(orderDetail.items || []).map((it, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '8px 0' }}>{it.product_name}{it.sku ? <span style={{ color: '#9ca3af' }}> · {it.sku}</span> : null}</td>
+                    <td>{it.quantity}</td>
+                    <td>{it.weight ? `${Number(it.weight)} kg` : '-'}</td>
+                    <td style={{ textAlign: 'right' }}>{money(Number(it.price) * Number(it.quantity))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={{ fontSize: '13px', display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 16px', maxWidth: '320px', marginLeft: 'auto' }}>
+              <span>Subtotal</span><span style={{ textAlign: 'right' }}>{money(orderDetail.subtotal)}</span>
+              {Number(orderDetail.discount) > 0 && <><span>Desconto{orderDetail.coupon_code ? ` (${orderDetail.coupon_code})` : ''}</span><span style={{ textAlign: 'right' }}>-{money(orderDetail.discount)}</span></>}
+              <span>Impostos</span><span style={{ textAlign: 'right' }}>{money(orderDetail.tax)}</span>
+              <span>Frete</span><span style={{ textAlign: 'right' }}>{money(orderDetail.shipping_cost)}</span>
+              <strong>Total</strong><strong style={{ textAlign: 'right' }}>{money(orderDetail.total)}</strong>
+            </div>
+
+            <div style={{ background: '#f9fafb', padding: '14px', borderRadius: '6px', margin: '20px 0 0', fontSize: '13px' }}>
+              <strong>Frete contratado pelo cliente:</strong>{' '}
+              {orderDetail.shipping_carrier || orderDetail.shipping_service
+                ? `${[orderDetail.shipping_carrier, orderDetail.shipping_service].filter(Boolean).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).join(' ')}${orderDetail.shipping_days ? ` · prazo ${orderDetail.shipping_days} dias úteis` : ''} (${money(orderDetail.shipping_cost)})`
+                : 'não registrado'}
+              {orderDetail.payment_id && <div style={{ color: '#6b7280', marginTop: '4px' }}>Pagamento: {orderDetail.payment_id}</div>}
+            </div>
+
+            {['paid', 'shipped'].includes(orderDetail.status) && (
+              <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '16px', marginTop: '16px' }}>
+                <div style={{ fontWeight: 700, marginBottom: '10px' }}>{orderDetail.status === 'shipped' ? 'Rastreio do envio' : 'Despachar pedido'}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                  <label style={{ fontSize: '12px' }}>Transportadora
+                    <input value={shipForm.carrier} onChange={(e) => setShipForm({ ...shipForm, carrier: e.target.value })} style={{ ...inputStyle, marginTop: '4px' }} placeholder="Ex.: Correios SEDEX" />
+                  </label>
+                  <label style={{ fontSize: '12px' }}>Código de rastreio
+                    <input value={shipForm.trackingNumber} onChange={(e) => setShipForm({ ...shipForm, trackingNumber: e.target.value })} style={{ ...inputStyle, marginTop: '4px' }} placeholder="Ex.: AA123456789BR" />
+                  </label>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  <button onClick={handleShipOrder} disabled={orderBusy} style={{ padding: '10px 16px', background: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: orderBusy ? 'wait' : 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                    {orderDetail.status === 'shipped' ? 'Atualizar rastreio e reenviar aviso' : 'Marcar como enviado e avisar o cliente'}
+                  </button>
+                  {orderDetail.status === 'shipped' && (
+                    <button onClick={handleDeliverOrder} disabled={orderBusy} style={{ padding: '10px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: orderBusy ? 'wait' : 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                      Marcar como entregue
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {orderDetail.status === 'delivered' && orderDetail.tracking && (
+              <p style={{ fontSize: '13px', color: '#6b7280' }}>Entregue · {orderDetail.tracking.carrier} · {orderDetail.tracking.tracking_number}</p>
+            )}
+
+            {orderMessage && (
+              <p role="status" style={{ marginTop: '12px', fontSize: '13px', padding: '10px 12px', borderRadius: '4px', background: orderMessage.type === 'ok' ? '#eef6ee' : orderMessage.type === 'warn' ? '#fff7e6' : '#fdecea', color: orderMessage.type === 'ok' ? '#2a6b2a' : orderMessage.type === 'warn' ? '#8a5a00' : '#b00020' }}>
+                {orderMessage.text}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {showProductModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>

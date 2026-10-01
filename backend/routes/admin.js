@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../server');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
+const { sendShippingNotification } = require('../services/emailService');
 
 const JWT_EXPIRATION = '7d'; // admin: sessao mais curta
 const BCRYPT_ROUNDS = 10;
@@ -358,38 +359,15 @@ router.get('/orders', adminAuthMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/admin/orders/:id
-router.get('/orders/:id', adminAuthMiddleware, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const orderResult = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
-    if (orderResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    const itemsResult = await pool.query(
-      'SELECT * FROM order_items WHERE order_id = $1',
-      [id]
-    );
-
-    res.json({
-      ...orderResult.rows[0],
-      items: itemsResult.rows,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // PUT /api/admin/orders/:id
 router.put('/orders/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!status) {
-      return res.status(400).json({ error: 'Status is required' });
+    const validStatuses = ['pending', 'payment_processing', 'paid', 'shipped', 'delivered', 'cancelled', 'refunded'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
     }
 
     const result = await pool.query(
@@ -622,6 +600,110 @@ router.put('/quotations/:id', adminAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Update quotation error:', error.message);
     res.status(500).json({ error: 'Could not update quotation' });
+  }
+});
+
+// ============ ORDER FULFILLMENT ============
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// GET /api/admin/orders/:id  (detalhe completo para despachar)
+router.get('/orders/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) return res.status(404).json({ error: 'Order not found' });
+
+    const orderResult = await pool.query('SELECT * FROM orders WHERE id = $1', [req.params.id]);
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+
+    const items = await pool.query(
+      `SELECT oi.product_name, oi.quantity, oi.price, p.sku, p.weight, p.width, p.height, p.depth
+       FROM order_items oi LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1`,
+      [req.params.id]
+    );
+    const tracking = await pool.query(
+      'SELECT carrier, tracking_number, status, last_updated FROM shipping_tracking WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [req.params.id]
+    );
+
+    res.json({ ...orderResult.rows[0], items: items.rows, tracking: tracking.rows[0] || null });
+  } catch (error) {
+    console.error('Admin order detail error:', error.message);
+    res.status(500).json({ error: 'Could not load the order' });
+  }
+});
+
+// POST /api/admin/orders/:id/ship  { carrier, trackingNumber }
+// Marca como enviado, grava o rastreio e avisa o cliente por e-mail (pode ser repetido para reenviar o aviso)
+router.post('/orders/:id/ship', adminAuthMiddleware, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) return res.status(404).json({ error: 'Order not found' });
+
+    const carrier = String(req.body.carrier || '').trim().slice(0, 60);
+    const trackingNumber = String(req.body.trackingNumber || '').trim().slice(0, 60);
+    if (carrier.length < 2) return res.status(400).json({ error: 'Carrier is required' });
+    if (!/^[A-Za-z0-9][A-Za-z0-9 ._-]{3,59}$/.test(trackingNumber)) {
+      return res.status(400).json({ error: 'Invalid tracking code' });
+    }
+
+    const orderResult = await pool.query('SELECT * FROM orders WHERE id = $1', [req.params.id]);
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+
+    if (!['paid', 'shipped'].includes(order.status)) {
+      return res.status(409).json({ error: 'Only paid orders can be shipped' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query('SELECT id FROM shipping_tracking WHERE order_id = $1 LIMIT 1', [order.id]);
+      if (existing.rows.length > 0) {
+        await client.query(
+          `UPDATE shipping_tracking SET carrier = $1, tracking_number = $2, status = 'in_transit', last_updated = NOW() WHERE id = $3`,
+          [carrier, trackingNumber, existing.rows[0].id]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO shipping_tracking (order_id, carrier, tracking_number, status) VALUES ($1, $2, $3, 'in_transit')`,
+          [order.id, carrier, trackingNumber]
+        );
+      }
+      await client.query(`UPDATE orders SET status = 'shipped', updated_at = NOW() WHERE id = $1`, [order.id]);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    const email = await sendShippingNotification(order, trackingNumber, carrier);
+    res.json({ status: 'shipped', carrier, trackingNumber, emailSent: !!email.success });
+  } catch (error) {
+    console.error('Ship order error:', error.message);
+    res.status(500).json({ error: 'Could not mark the order as shipped' });
+  }
+});
+
+// POST /api/admin/orders/:id/deliver
+router.post('/orders/:id/deliver', adminAuthMiddleware, async (req, res) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) return res.status(404).json({ error: 'Order not found' });
+
+    const result = await pool.query(
+      `UPDATE orders SET status = 'delivered', updated_at = NOW()
+       WHERE id = $1 AND status = 'shipped'
+       RETURNING id, status`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(409).json({ error: 'Only shipped orders can be marked as delivered' });
+
+    await pool.query(`UPDATE shipping_tracking SET status = 'delivered', last_updated = NOW() WHERE order_id = $1`, [req.params.id]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Deliver order error:', error.message);
+    res.status(500).json({ error: 'Could not mark the order as delivered' });
   }
 });
 

@@ -119,9 +119,10 @@ async function sendOrderConfirmation(order, customerEmail) {
   }
 }
 
-async function sendShippingNotification(order, trackingNumber) {
+async function sendShippingNotification(order, trackingNumber, carrier) {
   try {
     const trackingUrl = `${process.env.FRONTEND_URL}/track/${order.id}`;
+    const esc = (v) => String(v ?? '').replace(/[<>&]/g, '');
 
     const html = `
       <html>
@@ -130,12 +131,13 @@ async function sendShippingNotification(order, trackingNumber) {
             <h1 style="font-size: 24px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px;">
               Seu Pedido foi Despachado
             </h1>
-            <p style="font-size: 14px; color: #666;">Seu pedido está a caminho!</p>
+            <p style="font-size: 14px; color: #666;">Pedido ${esc(order.order_number)}: está a caminho!</p>
           </div>
 
           <div style="margin: 30px 0; padding: 20px; background: #f5f5f5; border-radius: 4px;">
-            <p style="margin: 0 0 10px 0; font-weight: 700;">Número do Rastreamento:</p>
-            <p style="margin: 0 0 20px 0; font-size: 18px; color: #000; font-family: monospace;">${trackingNumber}</p>
+            ${carrier ? `<p style="margin: 0 0 6px 0; font-size: 13px; color: #666;">Transportadora: <strong>${esc(carrier)}</strong></p>` : ''}
+            <p style="margin: 0 0 10px 0; font-weight: 700;">Código de rastreamento:</p>
+            <p style="margin: 0 0 20px 0; font-size: 18px; color: #000; font-family: monospace;">${esc(trackingNumber)}</p>
 
             <a href="${trackingUrl}" style="display: inline-block; background: #000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 700;">
               Acompanhar Entrega
@@ -145,18 +147,16 @@ async function sendShippingNotification(order, trackingNumber) {
       </html>
     `;
 
-    const messageData = {
+    const response = await mg.messages.create(MAILGUN_DOMAIN, {
       from: FROM_EMAIL,
       to: order.customer_email,
-      subject: `Seu Pedido foi Despachado - #${order.id}`,
+      subject: `Seu pedido foi despachado - ${esc(order.order_number)}`,
       html,
-    };
-
-    const response = await mg.messages.create(MAILGUN_DOMAIN, messageData);
-    console.log(`Shipping notification sent to ${order.customer_email}:`, response.id);
+    });
+    console.log(`Shipping notification sent for ${order.order_number}:`, response.id);
     return { success: true, messageId: response.id };
   } catch (error) {
-    console.error('Error sending shipping notification:', error);
+    console.error('Error sending shipping notification:', error.message);
     return { success: false, error: error.message };
   }
 }

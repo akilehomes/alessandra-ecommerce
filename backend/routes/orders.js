@@ -92,6 +92,7 @@ router.post('/', async (req, res) => {
 
     // Frete: no Brasil o servidor cota de novo e so aceita uma opcao que ele mesmo calculou
     let shippingCost;
+    let chosenShipping = null; // opcao de frete confirmada pelo servidor
     if ((region || 'BR') === 'BR') {
       if (!shippingMethodId) {
         return res.status(400).json({ error: 'A shipping method is required' });
@@ -118,6 +119,7 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'The selected shipping option is not available. Please choose again.' });
       }
       shippingCost = Math.round(Number(chosen.price) * 100) / 100;
+      chosenShipping = chosen;
     } else {
       shippingCost = Math.max(0, Number(clientShippingCost) || 0); // TODO: cotar fora do Brasil no servidor
     }
@@ -147,8 +149,9 @@ router.post('/', async (req, res) => {
       `INSERT INTO orders (
         user_id, order_number, status, subtotal, tax, shipping_cost, discount,
         total, customer_name, customer_email, customer_phone,
-        payment_method, region, shipping_address, coupon_code
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15)
+        payment_method, region, shipping_address, coupon_code,
+        shipping_method_id, shipping_carrier, shipping_service, shipping_days
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17, $18, $19)
        RETURNING *`,
       [
         userId,
@@ -166,6 +169,10 @@ router.post('/', async (req, res) => {
         currency || 'BRL',
         JSON.stringify(address),
         appliedCouponCode,
+        chosenShipping ? chosenShipping.id : null,
+        chosenShipping ? chosenShipping.carrier : null,
+        chosenShipping ? chosenShipping.service : null,
+        chosenShipping && Number.isFinite(Number(chosenShipping.delivery_time)) ? Math.round(Number(chosenShipping.delivery_time)) : null,
       ]
     );
 
@@ -216,10 +223,11 @@ router.post('/', async (req, res) => {
 // GET all orders (Admin)
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
-    const { limit = 50, offset = 0 } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
     const result = await pool.query(
-      'SELECT id, order_number, customer_name, customer_email, status, total, created_at FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      'SELECT id, order_number, customer_name, customer_email, status, total, region, shipping_carrier, shipping_service, coupon_code, created_at FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2',
       [limit, offset]
     );
 

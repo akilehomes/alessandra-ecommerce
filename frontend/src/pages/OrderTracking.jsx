@@ -299,6 +299,17 @@ export default function OrderTracking() {
             </div>
           </div>
 
+          {/* Carrier tracking */}
+          {order.shipping && order.shipping.tracking_number && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">Rastreio da transportadora</h3>
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-none text-sm text-gray-700">
+                {order.shipping.carrier && <p className="mb-1">Transportadora: <strong>{order.shipping.carrier}</strong></p>}
+                <p>Código: <span style={{ fontFamily: 'monospace', fontSize: '15px' }}>{order.shipping.tracking_number}</span></p>
+              </div>
+            </div>
+          )}
+
           {/* Shipping Address */}
           {order.shipping_address && (
             <div>

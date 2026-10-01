@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 const axios = require('axios');
 const { pool } = require('../server');
 
@@ -135,48 +136,13 @@ router.get('/rates/:region', async (req, res) => {
   }
 });
 
-// POST /api/shipping/create-label - Create shipping label
-router.post('/create-label', async (req, res) => {
-  try {
-    const { orderId, shippingMethod, recipientCep } = req.body;
-
-    const orderResult = await pool.query(
-      'SELECT * FROM orders WHERE id = $1',
-      [orderId]
-    );
-
-    if (orderResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    const trackingNumber = `BR${Date.now()}`;
-
-    const result = await pool.query(
-      `INSERT INTO shipping_tracking (order_id, tracking_number, carrier, status)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [orderId, trackingNumber, shippingMethod, 'in_transit']
-    );
-
-    res.json({
-      trackingNumber,
-      carrier: shippingMethod,
-      status: 'in_transit',
-      estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    });
-  } catch (error) {
-    console.error('Create label error:', error);
-    res.status(500).json({ error: 'Failed to create label' });
-  }
-});
-
 // GET /api/shipping/track/:trackingNumber - Get tracking info
 router.get('/track/:trackingNumber', async (req, res) => {
   try {
     const { trackingNumber } = req.params;
 
     const result = await pool.query(
-      'SELECT * FROM shipping_tracking WHERE tracking_number = $1',
+      'SELECT carrier, tracking_number, status, last_updated FROM shipping_tracking WHERE tracking_number = $1',
       [trackingNumber]
     );
 
@@ -192,13 +158,13 @@ router.get('/track/:trackingNumber', async (req, res) => {
 });
 
 // POST /api/shipping/update-tracking - Update tracking status
-router.post('/update-tracking', async (req, res) => {
+router.post('/update-tracking', adminAuthMiddleware, async (req, res) => {
   try {
     const { trackingNumber, status, lastUpdate } = req.body;
 
     const result = await pool.query(
       `UPDATE shipping_tracking
-       SET status = $1, last_update = $2
+       SET status = $1, last_updated = $2
        WHERE tracking_number = $3
        RETURNING *`,
       [status, lastUpdate || new Date(), trackingNumber]
