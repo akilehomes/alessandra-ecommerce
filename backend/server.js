@@ -62,7 +62,10 @@ app.use('/api/coupons', require('./routes/coupons'));
 // Quem abrir o dominio da API fora de /api e /webhooks vai para o site
 if (process.env.FRONTEND_URL) {
   const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+  let frontendHost = '';
+  try { frontendHost = new URL(frontendUrl).host; } catch (e) { /* URL invalida: nao redireciona */ }
   app.use((req, res, next) => {
+    if (!frontendHost || req.headers.host === frontendHost) return next(); // evita loop
     if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/webhooks')) {
       return next();
     }
