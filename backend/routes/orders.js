@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { pool } = require('../server');
 const authMiddleware = require('../middleware/authMiddleware');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // POST create order from cart
 router.post('/', async (req, res) => {
@@ -140,7 +141,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET all orders (Admin)
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { limit = 50, offset = 0 } = req.query;
 
@@ -243,7 +244,7 @@ router.get('/:orderId', async (req, res) => {
 });
 
 // PUT update order status (Admin only)
-router.put('/:orderId/status', async (req, res) => {
+router.put('/:orderId/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;

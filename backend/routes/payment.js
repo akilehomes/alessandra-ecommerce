@@ -6,6 +6,9 @@ const { Pool } = require('pg');
 const { sendOrderConfirmation } = require('../services/emailService');
 const agentService = require('../services/agentService');
 
+// Simulacao de pagamento: so em dev, ligada explicitamente. Fechada por padrao.
+const SIMULATION_ENABLED = process.env.ALLOW_PAYMENT_SIMULATION === 'true';
+
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -18,6 +21,9 @@ const pool = new Pool({
 
 // POST process payment (simplified for demo)
 router.post('/process', async (req, res) => {
+  if (!SIMULATION_ENABLED) {
+    return res.status(503).json({ error: 'Payment processing is not available' });
+  }
   try {
     const { orderId, amount, cardNumber, expiry, cvc } = req.body;
 
@@ -69,8 +75,15 @@ router.post('/stripe/confirm', async (req, res) => {
   try {
     const { paymentIntentId, orderId } = req.body;
 
-    // Modo simulação para testes (sem Stripe Elements)
+    if (typeof paymentIntentId !== 'string' || !orderId) {
+      return res.status(400).json({ error: 'paymentIntentId and orderId are required' });
+    }
+
+    // Modo simulação para testes (sem Stripe Elements) - bloqueado fora do dev
     if (paymentIntentId.startsWith('sim_test_')) {
+      if (!SIMULATION_ENABLED) {
+        return res.status(403).json({ error: 'Payment simulation is disabled' });
+      }
       console.log('✅ [SIM MODE] Confirmando pagamento:', paymentIntentId);
 
       // Atualizar status do pedido
