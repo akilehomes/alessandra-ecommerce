@@ -76,7 +76,7 @@ export default function AdminLogin() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@alessandra.com"
+              placeholder="seu@email.com"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -132,10 +132,6 @@ export default function AdminLogin() {
             {loading ? 'Autenticando...' : 'Entrar'}
           </button>
         </form>
-
-        <p style={{textAlign: 'center', marginTop: '24px', fontFamily: 'Outfit, sans-serif', fontSize: '12px', color: '#666'}}>
-          Padrão: admin@alessandra.com / Admin123!
-        </p>
       </div>
     </div>
   );

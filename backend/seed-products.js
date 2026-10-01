@@ -1,4 +1,11 @@
 require('dotenv').config();
+// ATENCAO: este script APAGA todos os produtos antes de inserir os de teste.
+// So roda com ALLOW_SEED=true (ex.: ALLOW_SEED=true node seed-products.js). Nunca em producao.
+if (process.env.ALLOW_SEED !== 'true') {
+  console.error('Recusado: este script apaga todos os produtos. Defina ALLOW_SEED=true se for mesmo um banco de teste.');
+  process.exit(1);
+}
+
 const { Pool } = require('pg');
 
 const pool = new Pool({

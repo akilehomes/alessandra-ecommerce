@@ -105,7 +105,7 @@ npm run setup:admin
 
 **Credenciais Padrão:**
 - Email: `admin@alessandra.com`
-- Senha: `Admin123!`
+- Senha: `<defina-sua-senha>`
 
 ### 2. Iniciar Servidores
 

@@ -1,3 +1,7 @@
+> **Atenção:** os scripts `seed-admin.js` e `setup-admin.js` (com senha fixa) foram removidos.
+> Para criar ou redefinir um administrador, use `npm run create-admin` na pasta `backend`
+> (veja `backend/database/create-admin.js`); a senha é pedida no terminal e nunca fica no código.
+
 # Admin Dashboard Setup
 
 ## Como Configurar o Admin Dashboard
@@ -20,7 +24,7 @@ npm run seed:admin
 
 Credenciais padrão:
 - Email: `admin@alessandra.com`
-- Senha: `Admin123!`
+- Senha: `<defina-sua-senha>`
 
 **⚠️ IMPORTANTE: Mude a senha após o primeiro login!**
 

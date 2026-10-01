@@ -231,7 +231,7 @@ Lista de todos os arquivos criados e modificados.
 
 ### Credenciais Padrão
 - **Email**: admin@alessandra.com
-- **Senha**: Admin123!
+- **Senha**: <defina-sua-senha>
 - ⚠️ **MUDE APÓS PRIMEIRO LOGIN!**
 
 ### Comandos Principais

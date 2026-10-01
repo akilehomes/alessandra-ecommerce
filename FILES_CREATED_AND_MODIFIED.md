@@ -40,7 +40,7 @@
 ### 4. `/backend/seed-admin.js` (53 linhas)
 **Descrição**: Script para criar usuário admin padrão
 **Funcionalidades**:
-- Cria admin: admin@alessandra.com / Admin123!
+- Cria admin: admin@alessandra.com / <defina-sua-senha>
 - Hash de senha com bcrypt
 - Valida se já existe
 

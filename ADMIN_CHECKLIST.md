@@ -133,7 +133,7 @@ npm run setup:admin
 **Esperado:**
 - [x] Migrações executadas sem erro
 - [x] Admin criado: admin@alessandra.com
-- [x] Senha: Admin123!
+- [x] Senha: <defina-sua-senha>
 - [x] Mensagem de sucesso
 
 ### Backend Online
@@ -163,7 +163,7 @@ npm start
 **Teste:**
 1. Acesse http://localhost:3000/admin/login
 2. Email: admin@alessandra.com
-3. Senha: Admin123!
+3. Senha: <defina-sua-senha>
 4. Clique em "Entrar"
 
 **Esperado:**

@@ -40,7 +40,7 @@ Abre automaticamente em http://localhost:3000
 
 1. Acesse http://localhost:3000/admin/login
 2. Email: `admin@alessandra.com`
-3. Senha: `Admin123!`
+3. Senha: `<defina-sua-senha>`
 4. Clique em "Entrar"
 
 ### 5. Você Está Dentro! 🎉
