@@ -100,3 +100,62 @@
 .auth-footer a:hover {
   text-decoration: underline;
 }
+
+/* Campo de senha com botao Mostrar/Ocultar */
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 88px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.password-toggle:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.forgot-link {
+  display: block;
+  text-align: right;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+.success-message {
+  background: #efffef;
+  border: 1px solid #9c9;
+  color: #2a6b2a;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.auth-hint {
+  color: #666;
+  font-size: 14px;
+  margin: -10px 0 20px 0;
+  text-align: center;
+}

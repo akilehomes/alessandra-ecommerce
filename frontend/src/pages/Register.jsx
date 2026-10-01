@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import PasswordInput from '../components/PasswordInput';
 import './Auth.css';
 
 export default function Register() {
@@ -75,13 +76,12 @@ export default function Register() {
 
           <div className="form-group">
             <label htmlFor="password">Senha</label>
-            <input
-              type="password"
+            <PasswordInput
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              required
+              autoComplete="new-password"
               minLength="6"
             />
           </div>

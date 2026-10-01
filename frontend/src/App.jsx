@@ -17,6 +17,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminDashboardComplete from "./pages/AdminDashboardComplete";
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Account from './pages/Account';
 import AdvancedSearch from './pages/AdvancedSearch';
 import Wishlist from './pages/Wishlist';
@@ -71,6 +73,8 @@ function App() {
                   <Route path="/track" element={<OrderTracking />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/account/orders" element={<Account />} />
                   <Route path="/wishlist" element={<Wishlist />} />
                   <Route path="/admin" element={<Admin />} />

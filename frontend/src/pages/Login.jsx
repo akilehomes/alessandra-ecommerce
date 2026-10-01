@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import PasswordInput from '../components/PasswordInput';
 import './Auth.css';
 
 export default function Login() {
@@ -41,14 +42,14 @@ export default function Login() {
 
           <div className="form-group">
             <label htmlFor="password">Senha</label>
-            <input
-              type="password"
+            <PasswordInput
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              required
+              autoComplete="current-password"
             />
+            <Link to="/forgot-password" className="forgot-link">Esqueci minha senha</Link>
           </div>
 
           <button type="submit" disabled={isLoading} className="btn-primary">

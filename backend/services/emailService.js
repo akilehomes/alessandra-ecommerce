@@ -161,7 +161,43 @@ async function sendShippingNotification(order, trackingNumber) {
   }
 }
 
+async function sendPasswordReset(email, name, resetUrl) {
+  const safeName = String(name || '').replace(/[<>&]/g, '');
+  const html = `
+    <html>
+      <body style="font-family: Outfit, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <div style="border-top: 3px solid #000; padding-top: 20px;">
+          <h1 style="font-size: 24px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px;">
+            Redefinir senha
+          </h1>
+          <p style="font-size: 14px; color: #666;">Olá${safeName ? ', ' + safeName : ''}. Recebemos um pedido para redefinir a senha da sua conta.</p>
+        </div>
+        <div style="margin: 30px 0; padding: 20px; background: #f5f5f5; border-radius: 4px;">
+          <a href="${resetUrl}" style="display: inline-block; background: #000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 700;">
+            Criar nova senha
+          </a>
+          <p style="font-size: 12px; color: #999; margin: 20px 0 0 0;">Este link vale por 1 hora. Se não foi você, ignore este e-mail: sua senha continua a mesma.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const response = await mg.messages.create(MAILGUN_DOMAIN, {
+      from: FROM_EMAIL,
+      to: email,
+      subject: 'Redefinir sua senha',
+      html,
+    });
+    return { success: true, messageId: response.id };
+  } catch (error) {
+    console.error('Error sending password reset email:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendOrderConfirmation,
   sendShippingNotification,
+  sendPasswordReset,
 };
