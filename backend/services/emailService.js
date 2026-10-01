@@ -15,6 +15,15 @@ const mg = mailgun.client({
 
 const FROM_EMAIL = process.env.FROM_EMAIL || `noreply@${MAILGUN_DOMAIN}`;
 
+function formatAddress(addr) {
+  if (!addr) return 'Não informado';
+  const a = typeof addr === 'string' ? JSON.parse(addr) : addr;
+  const esc = (v) => String(v ?? '').replace(/[<>&]/g, '');
+  const line1 = [esc(a.street), esc(a.number)].filter(Boolean).join(', ') + (a.complement ? ' - ' + esc(a.complement) : '');
+  const line2 = [esc(a.city), esc(a.state)].filter(Boolean).join(' - ') + (a.cep ? ' · CEP ' + esc(a.cep) : '');
+  return line1 + '<br>' + line2;
+}
+
 async function sendOrderConfirmation(order, customerEmail) {
   try {
     const trackingUrl = `${process.env.FRONTEND_URL}/track/${order.id}`;
@@ -81,7 +90,7 @@ async function sendOrderConfirmation(order, customerEmail) {
           <div style="margin: 30px 0; padding-top: 20px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #999;">
             <p style="margin: 10px 0;">
               <strong>Endereço de Entrega:</strong><br>
-              ${order.shipping_address || 'Não informado'}
+              ${formatAddress(order.shipping_address)}
             </p>
             <p style="margin: 10px 0;">
               Entrega prevista: 5-7 dias úteis

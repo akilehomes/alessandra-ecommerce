@@ -23,6 +23,7 @@ const FILES = [
   'migration-wishlist.sql',
   'migration-shipping-taxes.sql',
   'migration-carts-defaults.sql',
+  'migration-orders-shipping-address.sql',
 ];
 
 async function main() {

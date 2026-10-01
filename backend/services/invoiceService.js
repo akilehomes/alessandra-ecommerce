@@ -46,7 +46,7 @@ const generateInvoicePDF = (order) => {
         ? JSON.parse(order.shipping_address)
         : order.shipping_address;
       doc.font('Helvetica').fontSize(10);
-      doc.text(`${addr.street}, ${addr.number}`);
+      doc.text(`${addr.street}, ${addr.number}${addr.complement ? ' - ' + addr.complement : ''}`);
       doc.text(`${addr.city}, ${addr.state} ${addr.cep}`);
       doc.moveDown();
 

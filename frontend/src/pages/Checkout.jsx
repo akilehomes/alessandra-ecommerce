@@ -100,6 +100,7 @@ export default function Checkout() {
     customerPhone: user?.phone || '',
     street: '',
     number: '',
+    complement: '',
     city: '',
     state: '',
     cep: '',
@@ -205,6 +206,7 @@ export default function Checkout() {
         shippingAddress: {
           street: formData.street,
           number: formData.number,
+          complement: formData.complement,
           city: formData.city,
           state: formData.state,
           cep: formData.cep,
@@ -313,6 +315,19 @@ export default function Checkout() {
                     name="street"
                     value={formData.street}
                     onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group full">
+                  <label>Complement (optional)</label>
+                  <input
+                    type="text"
+                    name="complement"
+                    value={formData.complement}
+                    onChange={handleInputChange}
+                    placeholder="Apto, bloco, referencia"
                   />
                 </div>
               </div>

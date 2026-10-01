@@ -24,8 +24,21 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!customerEmail || !shippingAddress) {
+    if (!customerEmail || !shippingAddress || typeof shippingAddress !== 'object') {
       return res.status(400).json({ error: 'Email and shipping address are required' });
+    }
+
+    const clean = (v) => String(v ?? '').trim().slice(0, 200);
+    const address = {
+      street: clean(shippingAddress.street),
+      number: clean(shippingAddress.number),
+      complement: clean(shippingAddress.complement),
+      city: clean(shippingAddress.city),
+      state: clean(shippingAddress.state),
+      cep: clean(shippingAddress.cep),
+    };
+    if (!address.street || !address.city || !address.state || !address.cep) {
+      return res.status(400).json({ error: 'Shipping address is incomplete' });
     }
 
     // Get cart items
@@ -108,8 +121,8 @@ router.post('/', async (req, res) => {
       `INSERT INTO orders (
         user_id, order_number, status, subtotal, tax, shipping_cost, discount,
         total, customer_name, customer_email, customer_phone,
-        payment_method, region
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        payment_method, region, shipping_address
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
        RETURNING *`,
       [
         userId,
@@ -125,6 +138,7 @@ router.post('/', async (req, res) => {
         customerPhone,
         paymentMethod,
         currency || 'BRL',
+        JSON.stringify(address),
       ]
     );
 
