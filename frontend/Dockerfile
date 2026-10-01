@@ -1,4 +1,4 @@
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -13,22 +13,11 @@ RUN npm install
 # Copiar código
 COPY . .
 
-# Build
+# Build React app
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 RUN npm run build
 
-# Servidor Nginx
-FROM nginx:alpine
-
-WORKDIR /usr/share/nginx/html
-
-# Copiar build para Nginx
-COPY --from=builder /app/build .
-
-# Copiar configuração Nginx (será validada ao iniciar)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
 
-# Iniciar Nginx sem daemon mode
-CMD ["/bin/sh", "-c", "nginx -g 'daemon off;'"]
+# Servir com Express
+CMD ["node", "server.js"]
