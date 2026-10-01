@@ -83,6 +83,14 @@ function PaymentForm({ orderId, label, onBack, onPaid, setError }) {
   );
 }
 
+const readSavedCep = () => {
+  try {
+    return (localStorage.getItem('shippingCep') || '').replace(/\D/g, '');
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, total, cartId, clearCart } = useCartStore();
@@ -103,7 +111,7 @@ export default function Checkout() {
     complement: '',
     city: '',
     state: '',
-    cep: '',
+    cep: readSavedCep(),
   });
 
   const [shippingData, setShippingData] = useState({

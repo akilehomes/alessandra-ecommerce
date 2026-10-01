@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
+import ShippingCalculator from '../components/ShippingCalculator';
 
 const REGION_CONFIG = {
   BR: { name: 'Brasil', symbol: 'R$', tax: 0.18 },
@@ -16,6 +17,7 @@ export default function Cart() {
   const regionConfig = REGION_CONFIG[region];
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [shipping, setShipping] = useState(null); // opcao de frete escolhida (somente Brasil)
 
   const handleApplyCoupon = async () => {
     try {
@@ -61,7 +63,7 @@ export default function Cart() {
             {items.map((item) => (
               <div key={item.productId} className="flex gap-6 py-6 border-b border-gray-200">
                 <img
-                  src={item.image}
+                  src={item.image_url || item.image}
                   alt={item.name}
                   style={{width: '120px', height: '120px', objectFit: 'cover', backgroundColor: '#f5f5f5'}}
                 />
@@ -108,6 +110,17 @@ export default function Cart() {
                 </div>
               </div>
             ))}
+
+            {region === 'BR' && (
+              <ShippingCalculator
+                bare
+                selectable
+                autoCalculate
+                symbol={regionConfig.symbol}
+                items={items.map((item) => ({ productId: item.productId, quantity: item.quantity }))}
+                onSelect={setShipping}
+              />
+            )}
           </div>
 
           {/* Summary */}
@@ -139,12 +152,14 @@ export default function Cart() {
 
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'Outfit, sans-serif', fontSize: '14px'}}>
                 <span>Shipping:</span>
-                <span>TBD</span>
+                <span>
+                  {shipping ? `${regionConfig.symbol} ${Number(shipping.price).toFixed(2)}` : (region === 'BR' ? 'Informe o CEP' : 'TBD')}
+                </span>
               </div>
 
               <div style={{display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #000', marginBottom: '20px', fontFamily: 'Outfit, sans-serif', fontSize: '14px', fontWeight: '700'}}>
                 <span>Total:</span>
-                <span>{regionConfig.symbol} {(total + (total * regionConfig.tax) - discount).toFixed(2)}</span>
+                <span>{regionConfig.symbol} {(total + (total * regionConfig.tax) - discount + (shipping ? Number(shipping.price) : 0)).toFixed(2)}</span>
               </div>
 
               {/* Coupon Input */}

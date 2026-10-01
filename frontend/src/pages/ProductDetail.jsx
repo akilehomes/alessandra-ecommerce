@@ -9,7 +9,7 @@ import ReviewForm from '../components/ReviewForm';
 import ReviewsList from '../components/ReviewsList';
 import WishlistButton from '../components/WishlistButton';
 import AddedToCartModal from '../components/AddedToCartModal';
-import ProductShippingCalculator from '../components/ProductShippingCalculator';
+import ShippingCalculator from '../components/ShippingCalculator';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -312,7 +312,7 @@ export default function ProductDetail() {
               </button>
 
               {region === 'BR' && (
-                <ProductShippingCalculator productId={product.id} quantity={parseInt(quantity) || 1} />
+                <ShippingCalculator items={[{ productId: product.id, quantity: parseInt(quantity) || 1 }]} />
               )}
             </div>
 

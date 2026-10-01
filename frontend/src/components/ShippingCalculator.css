@@ -132,3 +132,44 @@
     flex-direction: column;
   }
 }
+
+.psc--bare {
+  margin-top: 32px;
+  padding: 24px 0 0;
+  border: none;
+  border-top: 1px solid #e5e5e5;
+}
+
+.psc-li {
+  list-style: none;
+}
+
+.psc-option--choice {
+  cursor: pointer;
+  align-items: center;
+  padding: 12px 10px;
+  margin: 0;
+}
+
+.psc-option--choice:hover {
+  background: #fafafa;
+}
+
+.psc-option--choice.is-selected {
+  background: #f3f3f3;
+  box-shadow: inset 3px 0 0 #000;
+}
+
+.psc-radio {
+  margin: 0 12px 0 0;
+  accent-color: #000;
+  flex-shrink: 0;
+}
+
+.psc-option-body {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
