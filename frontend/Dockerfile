@@ -20,21 +20,15 @@ RUN npm run build
 # Servidor Nginx
 FROM nginx:alpine
 
+WORKDIR /usr/share/nginx/html
+
 # Copiar build para Nginx
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/build .
 
-# Debug: Verificar se os arquivos foram copiados
-RUN echo "=== Conteúdo de /usr/share/nginx/html ===" && \
-    ls -la /usr/share/nginx/html && \
-    echo "=== Conteúdo de index.html ===" && \
-    head -5 /usr/share/nginx/html/index.html
-
-# Copiar configuração Nginx
+# Copiar configuração Nginx (será validada ao iniciar)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Validate nginx config
-RUN nginx -t
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Iniciar Nginx sem daemon mode
+CMD ["/bin/sh", "-c", "nginx -g 'daemon off;'"]
