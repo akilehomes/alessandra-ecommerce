@@ -39,8 +39,23 @@ async function loadCartProducts(items) {
   });
 }
 
+// Cache curto: o mesmo CEP + mesmos itens nao precisam consultar o Melhor Envio toda vez
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_MAX = 500;
+const quoteCache = new Map();
+
+function cacheKey(country, zipCode, clean) {
+  const itemsKey = clean.map((i) => `${i.productId}:${i.quantity}`).sort().join(',');
+  return `${country}|${String(zipCode).replace(/\D/g, '')}|${itemsKey}`;
+}
+
 // items: [{ productId, quantity }]
 async function quoteForCart({ items, zipCode, country = 'BR' }) {
+  const options = await quoteForCartUncached({ items, zipCode, country });
+  return options;
+}
+
+async function quoteForCartUncached({ items, zipCode, country = 'BR' }) {
   if (!Array.isArray(items) || items.length === 0) {
     const err = new Error('Cart items are required');
     err.status = 400;
@@ -53,6 +68,10 @@ async function quoteForCart({ items, zipCode, country = 'BR' }) {
     throw err;
   }
 
+  const key = cacheKey(country.toUpperCase(), zipCode, clean);
+  const hit = quoteCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.options;
+
   let products;
   try {
     products = await loadCartProducts(clean);
@@ -63,13 +82,18 @@ async function quoteForCart({ items, zipCode, country = 'BR' }) {
     throw err;
   }
 
+  let options;
   if (country.toUpperCase() === 'BR') {
-    return melhorEnvio.calculateShippingForProducts(zipCode, products);
+    options = await melhorEnvio.calculateShippingForProducts(zipCode, products);
+  } else {
+    // Outros paises: servico existente, com peso total e a maior caixa
+    const totalWeight = products.reduce((sum, p) => sum + p.weight * p.quantity, 0);
+    options = await shippingRouter.calculateShippingByCountry(country.toUpperCase(), zipCode, totalWeight, DEFAULT_DIMENSIONS);
   }
 
-  // Outros paises: servico existente, com peso total e a maior caixa
-  const totalWeight = products.reduce((sum, p) => sum + p.weight * p.quantity, 0);
-  return shippingRouter.calculateShippingByCountry(country.toUpperCase(), zipCode, totalWeight, DEFAULT_DIMENSIONS);
+  if (quoteCache.size >= CACHE_MAX) quoteCache.delete(quoteCache.keys().next().value);
+  quoteCache.set(key, { at: Date.now(), options });
+  return options;
 }
 
 module.exports = { quoteForCart };

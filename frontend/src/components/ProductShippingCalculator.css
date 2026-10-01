@@ -1,0 +1,134 @@
+.psc {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #e5e5e5;
+  font-family: 'Outfit', system-ui, sans-serif;
+  color: #000;
+}
+
+.psc-title {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.psc-form {
+  display: flex;
+  gap: 8px;
+}
+
+.psc-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #000;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.psc-input:focus-visible,
+.psc-button:focus-visible,
+.psc-link:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.psc-button {
+  padding: 12px 20px;
+  border: 1px solid #000;
+  background: #000;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.psc-button:hover:not(:disabled) {
+  background: #333;
+}
+
+.psc-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.psc-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.psc-error {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #b00020;
+}
+
+.psc-result {
+  margin-top: 16px;
+}
+
+.psc-summary {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.psc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #e5e5e5;
+}
+
+.psc-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 14px;
+}
+
+.psc-carrier {
+  font-weight: 600;
+}
+
+.psc-days {
+  color: #666;
+  font-size: 13px;
+}
+
+.psc-price {
+  white-space: nowrap;
+}
+
+.psc-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #888;
+}
+
+.psc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .psc-form {
+    flex-direction: column;
+  }
+}

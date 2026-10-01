@@ -4,10 +4,24 @@ const router = express.Router();
 const shippingRouter = require('../services/shippingRouter');
 const { quoteForCart } = require('../services/shippingQuote');
 
+// Limite simples em memoria: 30 cotacoes por minuto por IP (a rota e publica)
+const hits = new Map();
+const rateLimit = (req, res, next) => {
+  const now = Date.now();
+  const recent = (hits.get(req.ip) || []).filter((t) => now - t < 60 * 1000);
+  recent.push(now);
+  hits.set(req.ip, recent);
+  if (hits.size > 5000) hits.clear();
+  if (recent.length > 30) {
+    return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+  }
+  next();
+};
+
 // POST /api/shipping/calculate
 // Calcula opções de frete baseado no país e CEP de destino
 // Body: { country, zipCode, weight, dimensions: { width, height, length } }
-router.post('/calculate', async (req, res) => {
+router.post('/calculate', rateLimit, async (req, res) => {
   try {
     const { country, zipCode, weight, dimensions, items } = req.body;
 
