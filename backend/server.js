@@ -5,11 +5,34 @@ const { Pool } = require('pg');
 
 const app = express();
 
+// Atras do proxy do Railway: sem isto todos os visitantes aparecem com o mesmo IP
+// e os limites de requisicao seriam compartilhados por todos
+app.set('trust proxy', 1);
+
 // Webhooks precisam do corpo bruto para validar a assinatura: antes do express.json()
 app.use('/webhooks', require('./routes/webhooks'));
 
+// CORS: so o site (FRONTEND_URL, com e sem www) pode chamar a API pelo navegador.
+// Chamadas sem Origin (webhooks, servidor a servidor) continuam permitidas.
+const allowedOrigins = new Set();
+try {
+  const front = new URL(process.env.FRONTEND_URL);
+  allowedOrigins.add(front.origin);
+  const alt = front.hostname.startsWith('www.') ? front.hostname.slice(4) : `www.${front.hostname}`;
+  allowedOrigins.add(`${front.protocol}//${alt}${front.port ? `:${front.port}` : ''}`);
+} catch (e) {
+  /* FRONTEND_URL ausente ou invalida: libera todas as origens (comportamento anterior) */
+}
+
+const rateLimit = require('./middleware/rateLimit');
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.size === 0 || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -44,6 +67,7 @@ pool.query('SELECT NOW()', (err, res) => {
 
 // Routes (after export to avoid circular deps)
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/media', require('./routes/media'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/cart', require('./routes/cart'));
@@ -53,6 +77,10 @@ app.use('/api/shipping-integration', require('./routes/shippingIntegration'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/taxes', require('./routes/taxes'));
 app.use('/api/currency', require('./routes/currency'));
+const emailKey = (req) => `${req.ip}|${String((req.body && req.body.email) || '').toLowerCase()}`;
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, key: emailKey, message: 'Too many login attempts. Try again in a few minutes.' }));
+app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 8, key: emailKey, message: 'Too many login attempts. Try again in a few minutes.' }));
+app.use('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 'Too many sign-ups from this address. Try again later.' }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notifications', require('./routes/notifications'));

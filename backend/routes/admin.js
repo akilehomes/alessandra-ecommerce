@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../server');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
-const JWT_EXPIRATION = '30d';
+const JWT_EXPIRATION = '7d'; // admin: sessao mais curta
 const BCRYPT_ROUNDS = 10;
 
 // Validation helpers
