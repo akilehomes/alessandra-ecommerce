@@ -24,6 +24,7 @@ const FILES = [
   'migration-shipping-taxes.sql',
   'migration-carts-defaults.sql',
   'migration-orders-shipping-address.sql',
+  'migration-product-media.sql',
 ];
 
 async function main() {

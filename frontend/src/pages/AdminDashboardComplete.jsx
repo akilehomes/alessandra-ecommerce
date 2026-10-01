@@ -49,7 +49,7 @@ export default function AdminDashboardComplete() {
   const [productForm, setProductForm] = useState({ 
     name: '', price: '', category: '', description: '',
     weight: '', width: '', height: '', depth: '',
-    location: 'BR', currency: 'BRL', sku: ''
+    location: 'BR', currency: 'BRL', sku: '', image_url: ''
   });
   const [couponForm, setCouponForm] = useState({ code: '', discount_percentage: '', discount_amount: '', max_uses: '' });
   const [shippingForm, setShippingForm] = useState({ region: 'BR', zone: '', min_weight: '', max_weight: '', base_rate: '', per_kg_rate: '' });
@@ -105,7 +105,7 @@ export default function AdminDashboardComplete() {
         await axios.post(`${API_URL}/admin/products`, productForm, { headers });
       }
       setShowProductModal(false);
-      setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '' });
+      setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '', image_url: '' });
       setEditingProduct(null);
       loadAllData(token);
     } catch (error) {
@@ -123,12 +123,54 @@ export default function AdminDashboardComplete() {
     }
   };
 
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Reduz a foto no navegador (maior lado 1600px, JPEG) antes de enviar: fotos de celular tem varios MB
+  const resizeImage = async (file, maxSize = 1600) => {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; // PNG com fundo transparente vira branco no JPEG
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) =>
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('resize failed'))), 'image/jpeg', 0.85)
+    );
+  };
+
+  const handleImageSelected = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      alert('Use uma imagem JPG, PNG ou WebP.');
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const blob = await resizeImage(file);
+      const body = new FormData();
+      body.append('image', blob, 'produto.jpg');
+      const response = await axios.post(`${API_URL}/upload/product`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProductForm((form) => ({ ...form, image_url: response.data.imageUrl }));
+    } catch (error) {
+      alert('Erro ao enviar a foto: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleEditProduct = (product) => {
     setEditingProduct(product);
     setProductForm({
       name: product.name, price: product.price, category: product.category || '', description: product.description || '',
       weight: product.weight || '', width: product.width || '', height: product.height || '', depth: product.depth || '',
-      location: product.location || 'BR', currency: product.currency || 'BRL', sku: product.sku || ''
+      location: product.location || 'BR', currency: product.currency || 'BRL', sku: product.sku || '', image_url: product.image_url || ''
     });
     setShowProductModal(true);
   };
@@ -266,7 +308,7 @@ export default function AdminDashboardComplete() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontFamily: 'Outfit, sans-serif', margin: 0 }}>Produtos ({products.length})</h2>
-                    <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '' }); setShowProductModal(true); }} style={{ padding: '8px 16px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>+ Novo Produto</button>
+                    <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '', image_url: '' }); setShowProductModal(true); }} style={{ padding: '8px 16px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>+ Novo Produto</button>
                   </div>
                   <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -519,6 +561,19 @@ export default function AdminDashboardComplete() {
               </FormGroup>
               <FormGroup label="Profundidade" helper="Em centímetros (cm)">
                 <input type="number" step="0.01" value={productForm.depth} onChange={(e) => setProductForm({ ...productForm, depth: e.target.value })} style={inputStyle} placeholder="5" />
+              </FormGroup>
+              <FormGroup label="Foto do produto" helper="JPG, PNG ou WebP. A imagem é reduzida automaticamente antes de enviar." style={{ gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {productForm.image_url ? (
+                    <img src={productForm.image_url} alt="Pré-visualização" style={{ width: '88px', height: '88px', objectFit: 'cover', border: '1px solid #e5e7eb', background: '#f3f4f6' }} />
+                  ) : (
+                    <div style={{ width: '88px', height: '88px', border: '1px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>Sem foto</div>
+                  )}
+                  <label style={{ padding: '8px 14px', border: '1px solid #000', borderRadius: '4px', cursor: uploadingImage ? 'wait' : 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: '600', fontSize: '13px', opacity: uploadingImage ? 0.6 : 1 }}>
+                    {uploadingImage ? 'Enviando…' : (productForm.image_url ? 'Trocar foto' : 'Escolher foto')}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelected} disabled={uploadingImage} style={{ display: 'none' }} />
+                  </label>
+                </div>
               </FormGroup>
               <FormGroup label="Descrição" helper="Descrição detalhada do produto" style={{ gridColumn: '1 / -1' }}>
                 <textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} style={{ ...inputStyle, minHeight: '80px', gridColumn: '1 / -1' }} />
