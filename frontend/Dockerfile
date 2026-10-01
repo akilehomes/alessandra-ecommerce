@@ -32,6 +32,9 @@ RUN echo "=== Conteúdo de /usr/share/nginx/html ===" && \
 # Copiar configuração Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Validate nginx config
+RUN nginx -t
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
