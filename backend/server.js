@@ -15,8 +15,15 @@ const path = require('path');
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection
+const connectionString = process.env.DATABASE_URL || (process.env.NODE_ENV !== 'production' ? `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'password'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'alessandra_ecommerce'}` : null);
+
+if (!connectionString) {
+  console.error('❌ DATABASE_URL is required in production');
+  process.exit(1);
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'password'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'alessandra_ecommerce'}`,
+  connectionString,
   ...(process.env.NODE_ENV === 'production' && { ssl: { rejectUnauthorized: false } })
 });
 
