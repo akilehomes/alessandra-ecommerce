@@ -113,25 +113,65 @@ router.get('/products', adminAuthMiddleware, async (req, res) => {
   }
 });
 
+// Converte campo numerico do formulario: '' / undefined -> null; invalido -> NaN
+const toNumber = (v) => (v === '' || v === undefined || v === null ? null : Number(v));
+const toText = (v) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim());
+
+// Normaliza e valida os campos de produto vindos do painel
+function parseProductBody(body) {
+  const data = {
+    name: toText(body.name),
+    description: toText(body.description),
+    price: toNumber(body.price),
+    category: toText(body.category),
+    image_url: toText(body.image_url),
+    weight: toNumber(body.weight),
+    height: toNumber(body.height),
+    width: toNumber(body.width),
+    depth: toNumber(body.depth),
+    sku: toText(body.sku),
+    location: toText(body.location),
+    currency: toText(body.currency),
+  };
+  for (const key of ['price', 'weight', 'height', 'width', 'depth']) {
+    if (data[key] !== null && (!Number.isFinite(data[key]) || data[key] < 0)) {
+      return { error: `Invalid value for ${key}` };
+    }
+  }
+  if (data.currency && !['BRL', 'EUR'].includes(data.currency.toUpperCase())) {
+    return { error: 'Invalid currency' };
+  }
+  if (data.currency) data.currency = data.currency.toUpperCase();
+  return { data };
+}
+
+const slugify = (text) =>
+  String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+
 // POST /api/admin/products
 router.post('/products', adminAuthMiddleware, async (req, res) => {
   try {
-    const { name, description, price, category, image_url, weight, height, width, depth } = req.body;
-
-    if (!name || !price) {
-      return res.status(400).json({ error: 'Name and price are required' });
+    const { data, error } = parseProductBody(req.body);
+    if (error) return res.status(400).json({ error });
+    if (!data.name || !(data.price > 0)) {
+      return res.status(400).json({ error: 'Name and a price greater than zero are required' });
     }
 
+    const slug = `${slugify(data.name)}-${Date.now().toString(36)}`;
     const result = await pool.query(
-      `INSERT INTO products (name, description, price, category, image_url, weight, height, width, depth)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO products
+         (name, slug, description, price, category, image_url, weight, height, width, depth, sku, location, currency)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, 'BR'), COALESCE($13, 'BRL'))
        RETURNING *`,
-      [name, description, price, category, image_url, weight || 0, height || 0, width || 0, depth || 0]
+      [data.name, slug, data.description, data.price, data.category, data.image_url,
+       data.weight, data.height, data.width, data.depth, data.sku, data.location, data.currency]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Create product error:', error.message);
+    res.status(500).json({ error: 'Could not create product' });
   }
 });
 
@@ -139,7 +179,11 @@ router.post('/products', adminAuthMiddleware, async (req, res) => {
 router.put('/products/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, category, image_url, weight, height, width, depth } = req.body;
+    const { data, error } = parseProductBody(req.body);
+    if (error) return res.status(400).json({ error });
+    if (data.price !== null && !(data.price > 0)) {
+      return res.status(400).json({ error: 'Price must be greater than zero' });
+    }
 
     const result = await pool.query(
       `UPDATE products
@@ -152,10 +196,14 @@ router.put('/products/:id', adminAuthMiddleware, async (req, res) => {
            height = COALESCE($7, height),
            width = COALESCE($8, width),
            depth = COALESCE($9, depth),
+           sku = COALESCE($10, sku),
+           location = COALESCE($11, location),
+           currency = COALESCE($12, currency),
            updated_at = NOW()
-       WHERE id = $10
+       WHERE id = $13
        RETURNING *`,
-      [name, description, price, category, image_url, weight, height, width, depth, id]
+      [data.name, data.description, data.price, data.category, data.image_url, data.weight,
+       data.height, data.width, data.depth, data.sku, data.location, data.currency, id]
     );
 
     if (result.rows.length === 0) {
@@ -164,7 +212,8 @@ router.put('/products/:id', adminAuthMiddleware, async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Update product error:', error.message);
+    res.status(500).json({ error: 'Could not update product' });
   }
 });
 

@@ -68,7 +68,7 @@ export default function AdminDashboardComplete() {
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
       const responses = await Promise.all([
-        axios.get(`${API_URL}/products`, { headers }).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API_URL}/products?limit=100`, { headers }).catch(() => ({ data: { data: [] } })),
         axios.get(`${API_URL}/orders`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/coupons`, { headers }).catch(() => ({ data: [] })),
       ]);
@@ -100,9 +100,9 @@ export default function AdminDashboardComplete() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       if (editingProduct) {
-        await axios.put(`${API_URL}/products/${editingProduct.id}`, productForm, { headers });
+        await axios.put(`${API_URL}/admin/products/${editingProduct.id}`, productForm, { headers });
       } else {
-        await axios.post(`${API_URL}/products`, productForm, { headers });
+        await axios.post(`${API_URL}/admin/products`, productForm, { headers });
       }
       setShowProductModal(false);
       setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '' });
@@ -116,7 +116,7 @@ export default function AdminDashboardComplete() {
   const handleDeleteProduct = async (id) => {
     if (!window.confirm('Deletar produto?')) return;
     try {
-      await axios.delete(`${API_URL}/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`${API_URL}/admin/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       loadAllData(token);
     } catch (error) {
       alert('Erro ao deletar');
