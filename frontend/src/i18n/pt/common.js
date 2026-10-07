@@ -12,9 +12,9 @@ export default {
   'nav.search': 'Buscar',
   'nav.language': 'Idioma',
   'nav.region': 'Região',
-  'region.BR': '🇧🇷 Brasil (BRL)',
-  'region.PT': '🇵🇹 Portugal (EUR)',
-  'region.EU': '🇪🇺 Europa (EUR)',
+  'region.BR': '🇧🇷 Brasil',
+  'region.PT': '🇵🇹 Portugal',
+  'region.EU': '🇪🇺 Europa',
 
   // Rodape
   'footer.shop': 'Loja',

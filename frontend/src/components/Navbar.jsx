@@ -25,9 +25,9 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-16">
-      <div className="max-w-full px-6 h-full flex items-center justify-center relative">
+      <div className="max-w-full px-6 h-full flex items-center justify-between gap-4">
         {/* Left Navigation */}
-        <div className="absolute left-6 flex gap-8 text-sm font-medium">
+        <div className="flex-1 basis-0 min-w-0 flex gap-6 text-sm font-medium">
           <Link to="/" className="hover:opacity-60 transition">{t('nav.home')}</Link>
           <Link to="/shop" className="hover:opacity-60 transition font-bold">{t('nav.shop')}</Link>
           <Link to="/projects" className="hover:opacity-60 transition">{t('nav.projects')}</Link>
@@ -35,12 +35,12 @@ export default function Navbar() {
         </div>
 
         {/* Center Logo */}
-        <Link to="/" className="text-center text-xl font-bold tracking-wider">
+        <Link to="/" className="shrink-0 text-center text-xl font-bold tracking-wider whitespace-nowrap">
           ALESSANDRA ZANETTI
         </Link>
 
         {/* Right Section */}
-        <div className="absolute right-6 flex gap-6 items-center">
+        <div className="flex-1 basis-0 min-w-0 flex gap-4 items-center justify-end">
           {/* Idioma */}
           <select
             value={lang}
@@ -48,7 +48,7 @@ export default function Navbar() {
             aria-label={t('nav.language')}
             style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', padding: '4px 8px', border: '1px solid #000', background: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
           >
-            {Object.entries(LANGUAGES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+            {Object.entries(LANGUAGES).map(([code, name]) => <option key={code} value={code} title={name}>{code.toUpperCase()}</option>)}
           </select>
 
           {/* Region Selector */}
@@ -64,25 +64,25 @@ export default function Navbar() {
           </select>
 
           {/* Auth Links */}
-          <div className="flex gap-4 items-center text-sm">
+          <div className="flex gap-3 items-center text-sm whitespace-nowrap">
             {user ? (
               <>
-                <Link to="/account/orders" className="hover:opacity-60 transition">
-                  {user.name}
+                <Link to="/account/orders" className="hidden xl:inline hover:opacity-60 transition truncate max-w-[110px] whitespace-nowrap" title={user.name}>
+                  {String(user.name || '').split(' ')[0]}
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="hover:opacity-60 transition text-red-500 font-medium"
+                  className="hover:opacity-60 transition text-red-500 font-medium whitespace-nowrap"
                 >
                   {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="hover:opacity-60 transition">
+                <Link to="/login" className="hover:opacity-60 transition whitespace-nowrap">
                   {t('nav.login')}
                 </Link>
-                <Link to="/register" className="hover:opacity-60 transition font-bold">
+                <Link to="/register" className="hover:opacity-60 transition font-bold whitespace-nowrap">
                   {t('nav.register')}
                 </Link>
               </>

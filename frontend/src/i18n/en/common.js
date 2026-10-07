@@ -12,9 +12,9 @@ export default {
   'nav.search': 'Search',
   'nav.language': 'Language',
   'nav.region': 'Region',
-  'region.BR': '🇧🇷 Brazil (BRL)',
-  'region.PT': '🇵🇹 Portugal (EUR)',
-  'region.EU': '🇪🇺 Europe (EUR)',
+  'region.BR': '🇧🇷 Brazil',
+  'region.PT': '🇵🇹 Portugal',
+  'region.EU': '🇪🇺 Europe',
 
   // Footer
   'footer.shop': 'Shop',
