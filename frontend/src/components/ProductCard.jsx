@@ -26,6 +26,7 @@ export default function ProductCard({ product }) {
       price: product.price,
       image: product.image_url,
       quantity: 1,
+      stock: product.stock_quantity ?? null,
     });
     alert('Produto adicionado ao carrinho!');
   };

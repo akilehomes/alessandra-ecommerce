@@ -67,6 +67,7 @@ export default function ProductDetail() {
         price: product.price,
         image_url: product.image_url,
         quantity: parseInt(quantity),
+        stock,
       });
       setAddedItem({
         name: product.name,
@@ -238,7 +239,7 @@ export default function ProductDetail() {
               }}>
                 {currency} {displayPrice}
               </p>
-              <WishlistButton productId={parseInt(id)} size="lg" />
+              <WishlistButton productId={product.id} size="lg" />
             </div>
 
             {/* Quantity & Add to Cart */}

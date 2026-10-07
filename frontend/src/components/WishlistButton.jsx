@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useWishlistStore } from '../store/wishlistStore';
 import { useAuthStore } from '../store/authStore';
+import { useNavigate } from 'react-router-dom';
 
 export default function WishlistButton({ productId, size = 'md' }) {
   const [isHovered, setIsHovered] = useState(false);
   const { token } = useAuthStore();
-  const { isInWishlist, toggleWishlist } = useWishlistStore();
+  const { isInWishlist, toggleWishlist, fetchWishlist, fetchedFor } = useWishlistStore();
+  const navigate = useNavigate();
   const inWishlist = isInWishlist(productId);
+
+  // Carrega a lista salva da conta uma vez, para o coracao aparecer preenchido
+  useEffect(() => {
+    if (token && fetchedFor !== token) fetchWishlist(token);
+  }, [token, fetchedFor, fetchWishlist]);
 
   const handleToggle = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!token) {
-      alert('Please login to add items to your wishlist');
+      alert('Entre na sua conta para salvar produtos na lista de desejos.');
+      navigate('/login');
       return;
     }
 
@@ -44,7 +52,8 @@ export default function WishlistButton({ productId, size = 'md' }) {
         hover:scale-110
         active:scale-95
       `}
-      title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+      title={inWishlist ? 'Remover da lista de desejos' : 'Adicionar à lista de desejos'}
+      aria-label={inWishlist ? 'Remover da lista de desejos' : 'Adicionar à lista de desejos'}
     >
       <svg
         width="20"

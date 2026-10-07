@@ -30,22 +30,47 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  // Adicionar item ao carrinho
+  // Confere cada item com a loja: atualiza o estoque, limita a quantidade e remove o que saiu de venda
+  syncStock: async () => {
+    const { items } = get();
+    if (items.length === 0) return;
+    const synced = await Promise.all(items.map(async (i) => {
+      try {
+        const { data } = await axios.get(`${API_URL}/products/${i.productId}`);
+        const stock = data.stock_quantity === null || data.stock_quantity === undefined ? null : Number(data.stock_quantity);
+        if (stock === 0) return null;
+        const quantity = stock === null ? i.quantity : Math.min(i.quantity, stock);
+        return { ...i, stock, quantity };
+      } catch (error) {
+        // 404: produto arquivado ou removido. Outros erros (rede): mantem o item como esta.
+        return error.response && error.response.status === 404 ? null : i;
+      }
+    }));
+    const newItems = synced.filter(Boolean);
+    const newTotal = newItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    localStorage.setItem('cartItems', JSON.stringify(newItems));
+    set({ items: newItems, total: newTotal });
+  },
+
+  // Adicionar item ao carrinho (stock = unidades disponiveis; null/undefined = sem limite)
   addItem: (item) => {
     set((state) => {
       const existingItem = state.items.find(
         (i) => i.productId === item.productId
       );
 
+      const stock = item.stock ?? existingItem?.stock ?? null;
+      const cap = (q) => (stock === null ? q : Math.min(q, stock));
+
       let newItems;
       if (existingItem) {
         newItems = state.items.map((i) =>
           i.productId === item.productId
-            ? { ...i, quantity: i.quantity + item.quantity }
+            ? { ...i, stock, quantity: cap(i.quantity + item.quantity) }
             : i
         );
       } else {
-        newItems = [...state.items, item];
+        newItems = [...state.items, { ...item, stock, quantity: cap(item.quantity) }];
       }
 
       const newTotal = newItems.reduce(
@@ -82,7 +107,9 @@ export const useCartStore = create((set, get) => ({
         newItems = newItems.filter((i) => i.productId !== productId);
       } else {
         newItems = newItems.map((i) =>
-          i.productId === productId ? { ...i, quantity } : i
+          i.productId === productId
+            ? { ...i, quantity: i.stock == null ? quantity : Math.min(quantity, i.stock) }
+            : i
         );
       }
 

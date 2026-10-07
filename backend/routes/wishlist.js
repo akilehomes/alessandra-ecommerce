@@ -16,7 +16,7 @@ router.post('/:productId', authMiddleware, async (req, res) => {
 
     res.status(201).json({
       message: 'Added to wishlist',
-      item: result.rows[0] || { user_id: userId, product_id: parseInt(productId) }
+      item: result.rows[0] || { user_id: userId, product_id: productId }
     });
   } catch (error) {
     console.error('Wishlist add error:', error);

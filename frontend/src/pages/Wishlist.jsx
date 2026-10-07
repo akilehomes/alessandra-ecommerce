@@ -21,21 +21,21 @@ export default function Wishlist() {
 
   const handleAddToCart = (product) => {
     addItem({
-      id: product.product_id,
+      productId: product.product_id,
       name: product.name,
       price: product.price,
       image_url: product.image_url,
-      quantity: 1
+      quantity: 1,
     });
-    alert('Added to cart!');
+    alert('Produto adicionado ao carrinho!');
   };
 
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Please login to view your wishlist</h1>
-          <Link to="/login" className="text-blue-500 hover:underline">Go to Login</Link>
+          <h1 className="text-2xl font-bold mb-4">Entre na sua conta para ver a lista de desejos</h1>
+          <Link to="/login" className="text-blue-500 hover:underline">Ir para o login</Link>
         </div>
       </div>
     );
@@ -46,7 +46,7 @@ export default function Wishlist() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading your wishlist...</p>
+          <p>Carregando sua lista de desejos...</p>
         </div>
       </div>
     );
@@ -57,8 +57,8 @@ export default function Wishlist() {
       <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Your Wishlist</h1>
-          <p className="text-gray-600">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-4xl font-bold mb-2">Lista de desejos</h1>
+          <p className="text-gray-600">{items.length} {items.length === 1 ? 'item' : 'itens'}</p>
         </div>
 
         {items.length === 0 ? (
@@ -68,10 +68,10 @@ export default function Wishlist() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold mb-2">Your wishlist is empty</h2>
-            <p className="text-gray-600 mb-6">Start adding items to your wishlist!</p>
+            <h2 className="text-2xl font-bold mb-2">Sua lista de desejos está vazia</h2>
+            <p className="text-gray-600 mb-6">Toque no coração dos produtos para salvá-los aqui.</p>
             <Link to="/shop" className="inline-block bg-black text-white px-8 py-3 rounded hover:bg-gray-800 transition">
-              Continue Shopping
+              Continuar comprando
             </Link>
           </div>
         ) : (
@@ -87,7 +87,7 @@ export default function Wishlist() {
                       className="w-full h-full object-cover hover:scale-105 transition duration-300"
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">No image</div>
+                    <div className="flex items-center justify-center h-full text-gray-400">Sem imagem</div>
                   )}
 
                   {/* Wishlist Button */}
@@ -119,7 +119,7 @@ export default function Wishlist() {
                     onClick={() => handleAddToCart(item)}
                     className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
                   >
-                    Add to Cart
+                    Adicionar ao carrinho
                   </button>
                 </div>
               </div>

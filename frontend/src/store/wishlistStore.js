@@ -6,6 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 export const useWishlistStore = create((set, get) => ({
   items: [],
   loading: false,
+  fetchedFor: null, // token da conta cuja lista ja foi carregada do servidor
   error: null,
 
   // Initialize from localStorage on mount
@@ -22,14 +23,14 @@ export const useWishlistStore = create((set, get) => ({
 
   // Fetch wishlist from API
   fetchWishlist: async (token) => {
-    if (!token) return;
+    if (!token || get().loading) return;
 
     set({ loading: true });
     try {
       const response = await axios.get(`${API_URL}/wishlist`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      set({ items: response.data, loading: false, error: null });
+      set({ items: response.data, loading: false, fetchedFor: token, error: null });
       localStorage.setItem('wishlist_items', JSON.stringify(response.data));
     } catch (error) {
       console.error('Failed to fetch wishlist:', error);

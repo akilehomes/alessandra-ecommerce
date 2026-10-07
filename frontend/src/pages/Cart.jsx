@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
@@ -16,7 +16,10 @@ const REGION_CONFIG = {
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, total, updateQuantity, removeItem } = useCartStore();
+  const { items, total, updateQuantity, removeItem, syncStock } = useCartStore();
+
+  // Ao abrir o carrinho, confere estoque e disponibilidade atuais de cada item
+  useEffect(() => { syncStock(); }, [syncStock, items.length]);
   const { appliedCoupon, applyCoupon, removeCoupon } = useCouponStore();
   const { region } = useRegionStore();
   const regionConfig = REGION_CONFIG[region];
@@ -114,11 +117,17 @@ export default function Cart() {
                       </span>
                       <button
                         onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                        style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', padding: '6px 12px', border: 'none', background: 'none', cursor: 'pointer'}}
+                        disabled={item.stock != null && item.quantity >= item.stock}
+                        style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', padding: '6px 12px', border: 'none', background: 'none', cursor: item.stock != null && item.quantity >= item.stock ? 'not-allowed' : 'pointer', opacity: item.stock != null && item.quantity >= item.stock ? 0.3 : 1}}
                       >
                         +
                       </button>
                     </div>
+                    {item.stock != null && item.quantity >= item.stock && (
+                      <span style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', color: '#d97706'}}>
+                        Máximo disponível: {item.stock}
+                      </span>
+                    )}
 
                     <button
                       onClick={() => removeItem(item.productId)}
