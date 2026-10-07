@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
     const { category, search, page = 1, limit = 12, featured = false } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = 'SELECT * FROM products WHERE 1=1';
+    let query = "SELECT * FROM products WHERE status = 'active'";
     const params = [];
 
     if (category) {
@@ -58,7 +58,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
 
     const productResult = await pool.query(
-      'SELECT * FROM products WHERE id = $1',
+      "SELECT * FROM products WHERE id = $1 AND status = 'active'",
       [id]
     );
 
@@ -73,7 +73,7 @@ router.get('/:id', async (req, res) => {
 
     // Get additional images ordered by position
     const imagesResult = await pool.query(
-      'SELECT * FROM product_images WHERE product_id = $1 ORDER BY position ASC',
+      'SELECT * FROM product_images WHERE product_id = $1 ORDER BY position ASC, created_at ASC',
       [id]
     );
 

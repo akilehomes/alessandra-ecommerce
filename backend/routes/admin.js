@@ -173,7 +173,12 @@ router.get('/dashboard', adminAuthMiddleware, async (req, res) => {
 // GET /api/admin/products
 router.get('/products', adminAuthMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
+    const result = await pool.query(
+      `SELECT p.*,
+              COALESCE((SELECT json_agg(pi.image_url ORDER BY pi.position, pi.created_at)
+                        FROM product_images pi WHERE pi.product_id = p.id), '[]'::json) AS images
+       FROM products p ORDER BY p.created_at DESC`
+    );
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -199,11 +204,28 @@ function parseProductBody(body) {
     sku: toText(body.sku),
     location: toText(body.location),
     currency: toText(body.currency),
+    status: toText(body.status),
+    stock_quantity: toNumber(body.stock_quantity), // null = sem controle de estoque
+    hasStock: Object.prototype.hasOwnProperty.call(body, 'stock_quantity'),
   };
   for (const key of ['price', 'weight', 'height', 'width', 'depth']) {
     if (data[key] !== null && (!Number.isFinite(data[key]) || data[key] < 0)) {
       return { error: `Invalid value for ${key}` };
     }
+  }
+  if (data.stock_quantity !== null && (!Number.isInteger(data.stock_quantity) || data.stock_quantity < 0)) {
+    return { error: 'Stock must be a whole number, zero or more' };
+  }
+  if (data.status && !['active', 'draft', 'archived'].includes(data.status)) {
+    return { error: 'Invalid status' };
+  }
+  if (body.images !== undefined) {
+    const list = Array.isArray(body.images) ? body.images : null;
+    if (!list || list.length > 10 || list.some((u) => typeof u !== 'string' || u.length > 500 || !/^(https?:\/\/|\/)/.test(u))) {
+      return { error: 'Invalid images list (max 10 URLs)' };
+    }
+    data.images = list;
+    if (list.length > 0) data.image_url = list[0]; // a primeira e a foto principal
   }
   if (data.currency && !['BRL', 'EUR'].includes(data.currency.toUpperCase())) {
     return { error: 'Invalid currency' };
@@ -216,6 +238,17 @@ const slugify = (text) =>
   String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
 
+// Troca a galeria do produto pela lista enviada (a ordem da lista e a ordem das fotos)
+async function replaceImages(client, productId, images) {
+  await client.query('DELETE FROM product_images WHERE product_id = $1', [productId]);
+  for (let i = 0; i < images.length; i++) {
+    await client.query(
+      'INSERT INTO product_images (product_id, image_url, is_primary, position) VALUES ($1, $2, $3, $4)',
+      [productId, images[i], i === 0, i]
+    );
+  }
+}
+
 // POST /api/admin/products
 router.post('/products', adminAuthMiddleware, async (req, res) => {
   try {
@@ -226,16 +259,27 @@ router.post('/products', adminAuthMiddleware, async (req, res) => {
     }
 
     const slug = `${slugify(data.name)}-${Date.now().toString(36)}`;
-    const result = await pool.query(
-      `INSERT INTO products
-         (name, slug, description, price, category, image_url, weight, height, width, depth, sku, location, currency)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, 'BR'), COALESCE($13, 'BRL'))
-       RETURNING *`,
-      [data.name, slug, data.description, data.price, data.category, data.image_url,
-       data.weight, data.height, data.width, data.depth, data.sku, data.location, data.currency]
-    );
-
-    res.status(201).json(result.rows[0]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query(
+        `INSERT INTO products
+           (name, slug, description, price, category, image_url, weight, height, width, depth, sku, location, currency, status, stock_quantity)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, 'BR'), COALESCE($13, 'BRL'), COALESCE($14, 'active'), $15)
+         RETURNING *`,
+        [data.name, slug, data.description, data.price, data.category, data.image_url,
+         data.weight, data.height, data.width, data.depth, data.sku, data.location, data.currency,
+         data.status, data.stock_quantity]
+      );
+      if (data.images) await replaceImages(client, result.rows[0].id, data.images);
+      await client.query('COMMIT');
+      res.status(201).json(result.rows[0]);
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error('Create product error:', error.message);
     res.status(500).json({ error: 'Could not create product' });
@@ -252,7 +296,11 @@ router.put('/products/:id', adminAuthMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Price must be greater than zero' });
     }
 
-    const result = await pool.query(
+    const client = await pool.connect();
+    let result;
+    try {
+      await client.query('BEGIN');
+      result = await client.query(
       `UPDATE products
        SET name = COALESCE($1, name),
            description = COALESCE($2, description),
@@ -266,12 +314,23 @@ router.put('/products/:id', adminAuthMiddleware, async (req, res) => {
            sku = COALESCE($10, sku),
            location = COALESCE($11, location),
            currency = COALESCE($12, currency),
+           status = COALESCE($14, status),
+           stock_quantity = CASE WHEN $15::boolean THEN $16::int ELSE stock_quantity END,
            updated_at = NOW()
        WHERE id = $13
        RETURNING *`,
       [data.name, data.description, data.price, data.category, data.image_url, data.weight,
-       data.height, data.width, data.depth, data.sku, data.location, data.currency, id]
-    );
+       data.height, data.width, data.depth, data.sku, data.location, data.currency, id,
+       data.status, data.hasStock, data.stock_quantity]
+      );
+      if (result.rows.length > 0 && data.images) await replaceImages(client, id, data.images);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });

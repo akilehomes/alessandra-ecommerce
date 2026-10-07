@@ -54,8 +54,13 @@ export default function ProductDetail() {
     }
   };
 
+  // stock_quantity vazio = sem controle de estoque
+  const stock = product && product.stock_quantity != null ? Number(product.stock_quantity) : null;
+  const outOfStock = stock !== null && stock <= 0;
+  const maxQuantity = stock !== null ? Math.max(stock, 1) : Infinity;
+
   const handleAddToCart = () => {
-    if (product) {
+    if (product && !outOfStock) {
       addItem({
         productId: product.id,
         name: product.name,
@@ -242,7 +247,7 @@ export default function ProductDetail() {
                 {/* Quantity Input */}
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #d1d5db' }}>
                   <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    onClick={() => setQuantity(Math.max(1, Math.min(quantity, maxQuantity) - 1))}
                     style={{
                       fontFamily: 'Outfit, sans-serif',
                       fontSize: '16px',
@@ -259,7 +264,8 @@ export default function ProductDetail() {
                     type="number"
                     min="1"
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => setQuantity(Math.min(maxQuantity, Math.max(1, parseInt(e.target.value) || 1)))}
+                    max={stock !== null ? stock : undefined}
                     style={{
                       fontFamily: 'Outfit, sans-serif',
                       fontSize: '14px',
@@ -272,7 +278,7 @@ export default function ProductDetail() {
                     }}
                   />
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
                     style={{
                       fontFamily: 'Outfit, sans-serif',
                       fontSize: '16px',
@@ -288,9 +294,21 @@ export default function ProductDetail() {
                 </div>
               </div>
 
+              {outOfStock && (
+                <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '13px', color: '#dc2626', fontWeight: '600', margin: '0 0 12px' }}>
+                  Produto esgotado no momento.
+                </p>
+              )}
+              {stock !== null && stock > 0 && stock <= 5 && (
+                <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '13px', color: '#d97706', margin: '0 0 12px' }}>
+                  {stock === 1 ? 'Resta apenas 1 unidade.' : `Restam apenas ${stock} unidades.`}
+                </p>
+              )}
+
               {/* Add to Cart Button */}
               <button
                 onClick={handleAddToCart}
+                disabled={outOfStock}
                 style={{
                   fontFamily: 'Outfit, sans-serif',
                   fontSize: '14px',
@@ -300,15 +318,15 @@ export default function ProductDetail() {
                   padding: '16px 24px',
                   width: '100%',
                   border: '1px solid #000',
-                  background: '#000',
+                  background: outOfStock ? '#d1d5db' : '#000',
                   color: '#fff',
-                  cursor: 'pointer',
+                  cursor: outOfStock ? 'not-allowed' : 'pointer',
                   transition: 'all 0.3s ease'
                 }}
-                onMouseEnter={(e) => e.target.style.background = '#333'}
-                onMouseLeave={(e) => e.target.style.background = '#000'}
+                onMouseEnter={(e) => { if (!outOfStock) e.target.style.background = '#333'; }}
+                onMouseLeave={(e) => { if (!outOfStock) e.target.style.background = '#000'; }}
               >
-                Adicionar ao Carrinho
+                {outOfStock ? 'Esgotado' : 'Adicionar ao Carrinho'}
               </button>
 
               {region === 'BR' && (

@@ -15,7 +15,8 @@ export default function ProductCard({ product }) {
   const { region } = useRegionStore();
   const regionConfig = REGION_CONFIG[region];
 
-  const inStock = product.inventory?.quantity - product.inventory?.reserved > 0;
+  // stock_quantity vazio = sem controle de estoque (sempre disponivel)
+  const inStock = product.stock_quantity == null || product.stock_quantity > 0;
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -59,27 +60,13 @@ export default function ProductCard({ product }) {
           {/* Stock Badge */}
           {!inStock && (
             <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 text-xs uppercase font-semibold">
-              Out of Stock
+              Esgotado
             </div>
           )}
         </div>
 
         <h3 className="product-name">{product.name}</h3>
         <p className="product-price">{regionConfig.symbol} {Number(product.price).toFixed(2)}</p>
-
-        {/* Notify Me Button if out of stock */}
-        {!inStock && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              // TODO: Open notify modal
-              alert('Avise-me quando chegar em breve');
-            }}
-            className="text-xs text-gray-500 hover:text-gray-900 underline mt-2"
-          >
-            Avise-me quando chegar
-          </button>
-        )}
       </div>
     </Link>
   );

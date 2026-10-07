@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 
     let query = 'SELECT p.* FROM products p';
     let countQuery = 'SELECT COUNT(*) FROM products p';
-    let whereConditions = [];
+    let whereConditions = ["p.status = 'active'"];
     let params = [];
     let paramIndex = 1;
 
@@ -111,7 +111,7 @@ router.get('/', async (req, res) => {
 router.get('/categories', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category'
+      "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND status = 'active' ORDER BY category"
     );
 
     const categories = result.rows.map(row => row.category);
@@ -126,7 +126,7 @@ router.get('/categories', async (req, res) => {
 router.get('/price-range', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT MIN(price) as min_price, MAX(price) as max_price FROM products'
+      "SELECT MIN(price) as min_price, MAX(price) as max_price FROM products WHERE status = 'active'"
     );
 
     const { min_price, max_price } = result.rows[0];

@@ -112,6 +112,11 @@ export default function Shop() {
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:opacity-75 transition-opacity duration-300"
                     />
+                    {product.stock_quantity != null && product.stock_quantity <= 0 && (
+                      <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#000', color: '#fff', fontFamily: 'Outfit, sans-serif', fontSize: '9px', fontWeight: '700', letterSpacing: '1px', padding: '3px 8px', textTransform: 'uppercase' }}>
+                        Esgotado
+                      </div>
+                    )}
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <WishlistButton productId={product.id} size="sm" />
                     </div>

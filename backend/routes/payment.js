@@ -6,6 +6,7 @@ const { Pool } = require('pg');
 const { sendOrderConfirmation } = require('../services/emailService');
 const agentService = require('../services/agentService');
 const { registerCouponUse } = require('../services/couponService');
+const { decrementStockForOrder } = require('../services/stockService');
 
 // Simulacao de pagamento: so em dev, ligada explicitamente. Fechada por padrao.
 const SIMULATION_ENABLED = process.env.ALLOW_PAYMENT_SIMULATION === 'true';
@@ -61,6 +62,7 @@ async function markOrderPaid(orderId, paymentId) {
   if (updated.rows.length === 0) return false;
   const order = updated.rows[0];
   await registerCouponUse(order.coupon_code);
+  await decrementStockForOrder(pool, order.id);
   try {
     await sendOrderConfirmation(order, order.customer_email);
   } catch (err) {

@@ -71,7 +71,7 @@ router.post('/', async (req, res) => {
     let productRows;
     try {
       productRows = (await pool.query(
-        'SELECT id, name, price FROM products WHERE id = ANY($1::uuid[])',
+        "SELECT id, name, price, stock_quantity FROM products WHERE id = ANY($1::uuid[]) AND status = 'active'",
         [productIds]
       )).rows;
     } catch (e) {
@@ -81,6 +81,23 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'One or more products are unavailable' });
     }
     const byId = new Map(productRows.map((p) => [p.id, p]));
+
+    // Estoque: produtos com controle (stock_quantity) nao podem passar da quantidade disponivel
+    const wanted = new Map();
+    for (const r of requested) wanted.set(r.productId, (wanted.get(r.productId) || 0) + r.quantity);
+    for (const [productId, qty] of wanted) {
+      const p = byId.get(productId);
+      if (p.stock_quantity !== null && qty > p.stock_quantity) {
+        return res.status(409).json({
+          error: p.stock_quantity > 0
+            ? `Only ${p.stock_quantity} unit(s) of "${p.name}" available`
+            : `"${p.name}" is out of stock`,
+          code: 'OUT_OF_STOCK',
+          productId,
+          available: p.stock_quantity,
+        });
+      }
+    }
     cartItems = requested.map((r) => {
       const p = byId.get(r.productId);
       return { product_id: p.id, product_name: p.name, name: p.name, price: Number(p.price), quantity: r.quantity };

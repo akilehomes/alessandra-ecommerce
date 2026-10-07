@@ -3,6 +3,18 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 const REGIONS = { BR: 'Brasil', PT: 'Portugal', EU: 'Europa' };
+const PRODUCT_STATUS = {
+  active: { label: 'Ativo', color: '#16a34a' },
+  draft: { label: 'Rascunho', color: '#d97706' },
+  archived: { label: 'Arquivado', color: '#6b7280' },
+};
+const MAX_PRODUCT_IMAGES = 10;
+const EMPTY_PRODUCT = {
+  name: '', price: '', category: '', description: '',
+  weight: '', width: '', height: '', depth: '',
+  location: 'BR', currency: 'BRL', sku: '',
+  status: 'active', stock_quantity: '', images: [],
+};
 const CURRENCIES = { BRL: 'R$ (Real)', EUR: '€ (Euro)', USD: '$ (Dólar)' };
 const TAX_TYPES = { ICMS: 'ICMS (Brasil)', IVA: 'IVA (Portugal)', VAT: 'VAT (Europa)', GST: 'GST (Canadá)' };
 
@@ -82,11 +94,7 @@ export default function AdminDashboardComplete() {
   const [editingTax, setEditingTax] = useState(null);
 
   // Form states
-  const [productForm, setProductForm] = useState({ 
-    name: '', price: '', category: '', description: '',
-    weight: '', width: '', height: '', depth: '',
-    location: 'BR', currency: 'BRL', sku: '', image_url: ''
-  });
+  const [productForm, setProductForm] = useState(EMPTY_PRODUCT);
   const [couponForm, setCouponForm] = useState({ code: '', discount_percentage: '', discount_amount: '', max_uses: '' });
   const [shippingForm, setShippingForm] = useState({ region: 'BR', zone: '', min_weight: '', max_weight: '', base_rate: '', per_kg_rate: '' });
   const [taxForm, setTaxForm] = useState({ region: 'BR', tax_type: 'ICMS', rate: '' });
@@ -104,12 +112,12 @@ export default function AdminDashboardComplete() {
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
       const responses = await Promise.all([
-        axios.get(`${API_URL}/products?limit=100`, { headers }).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API_URL}/admin/products`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/orders?limit=500`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/coupons`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_URL}/admin/quotations`, { headers }).catch(() => ({ data: [] })),
       ]);
-      setProducts(responses[0].data?.data || []);
+      setProducts(Array.isArray(responses[0].data) ? responses[0].data : []);
       setOrders(Array.isArray(responses[1].data) ? responses[1].data : []);
       setCoupons(Array.isArray(responses[2].data) ? responses[2].data : []);
       setQuotations(Array.isArray(responses[3].data) ? responses[3].data : []);
@@ -143,11 +151,11 @@ export default function AdminDashboardComplete() {
         await axios.post(`${API_URL}/admin/products`, productForm, { headers });
       }
       setShowProductModal(false);
-      setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '', image_url: '' });
+      setProductForm(EMPTY_PRODUCT);
       setEditingProduct(null);
       loadAllData(token);
     } catch (error) {
-      alert('Erro: ' + error.message);
+      alert('Erro: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -179,6 +187,12 @@ export default function AdminDashboardComplete() {
     );
   };
 
+  // A primeira foto da lista e a principal (aparece na loja e nas listagens)
+  const makeImagePrimary = (index) =>
+    setProductForm((form) => ({ ...form, images: [form.images[index], ...form.images.filter((_, i) => i !== index)] }));
+  const removeImage = (index) =>
+    setProductForm((form) => ({ ...form, images: form.images.filter((_, i) => i !== index) }));
+
   const handleImageSelected = async (event) => {
     const file = event.target.files && event.target.files[0];
     event.target.value = '';
@@ -195,7 +209,7 @@ export default function AdminDashboardComplete() {
       const response = await axios.post(`${API_URL}/upload/product`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProductForm((form) => ({ ...form, image_url: response.data.imageUrl }));
+      setProductForm((form) => ({ ...form, images: [...form.images, response.data.imageUrl].slice(0, MAX_PRODUCT_IMAGES) }));
     } catch (error) {
       alert('Erro ao enviar a foto: ' + (error.response?.data?.error || error.message));
     } finally {
@@ -281,7 +295,10 @@ export default function AdminDashboardComplete() {
     setProductForm({
       name: product.name, price: product.price, category: product.category || '', description: product.description || '',
       weight: product.weight || '', width: product.width || '', height: product.height || '', depth: product.depth || '',
-      location: product.location || 'BR', currency: product.currency || 'BRL', sku: product.sku || '', image_url: product.image_url || ''
+      location: product.location || 'BR', currency: product.currency || 'BRL', sku: product.sku || '',
+      status: product.status || 'active',
+      stock_quantity: product.stock_quantity ?? '',
+      images: (product.images && product.images.length) ? product.images : (product.image_url ? [product.image_url] : []),
     });
     setShowProductModal(true);
   };
@@ -420,7 +437,7 @@ export default function AdminDashboardComplete() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontFamily: 'Outfit, sans-serif', margin: 0 }}>Produtos ({products.length})</h2>
-                    <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', category: '', description: '', weight: '', width: '', height: '', depth: '', location: 'BR', currency: 'BRL', sku: '', image_url: '' }); setShowProductModal(true); }} style={{ padding: '8px 16px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>+ Novo Produto</button>
+                    <button onClick={() => { setEditingProduct(null); setProductForm(EMPTY_PRODUCT); setShowProductModal(true); }} style={{ padding: '8px 16px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>+ Novo Produto</button>
                   </div>
                   <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -428,6 +445,8 @@ export default function AdminDashboardComplete() {
                         <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                           <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>Nome</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>Preço</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>Status</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>Estoque</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>Local</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>Peso</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontFamily: 'Outfit, sans-serif', fontWeight: '600' }}>SKU</th>
@@ -439,6 +458,18 @@ export default function AdminDashboardComplete() {
                           <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '12px' }}>{p.name}</td>
                             <td style={{ padding: '12px' }}>{p.currency} {parseFloat(p.price).toFixed(2)}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ color: (PRODUCT_STATUS[p.status] || PRODUCT_STATUS.active).color, fontWeight: '600' }}>
+                                {(PRODUCT_STATUS[p.status] || PRODUCT_STATUS.active).label}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              {p.stock_quantity === null || p.stock_quantity === undefined
+                                ? <span style={{ color: '#9ca3af' }}>Sem controle</span>
+                                : <span style={{ color: p.stock_quantity === 0 ? '#dc2626' : (p.stock_quantity <= 3 ? '#d97706' : 'inherit'), fontWeight: p.stock_quantity <= 3 ? '600' : '400' }}>
+                                    {p.stock_quantity === 0 ? 'Esgotado' : p.stock_quantity}
+                                  </span>}
+                            </td>
                             <td style={{ padding: '12px' }}>{REGIONS[p.location] || p.location}</td>
                             <td style={{ padding: '12px' }}>{p.weight || '-'} kg</td>
                             <td style={{ padding: '12px' }}>{p.sku || '-'}</td>
@@ -859,17 +890,34 @@ export default function AdminDashboardComplete() {
               <FormGroup label="Profundidade" helper="Em centímetros (cm)">
                 <input type="number" step="0.01" value={productForm.depth} onChange={(e) => setProductForm({ ...productForm, depth: e.target.value })} style={inputStyle} placeholder="5" />
               </FormGroup>
-              <FormGroup label="Foto do produto" helper="JPG, PNG ou WebP. A imagem é reduzida automaticamente antes de enviar." style={{ gridColumn: '1 / -1' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  {productForm.image_url ? (
-                    <img src={productForm.image_url} alt="Pré-visualização" style={{ width: '88px', height: '88px', objectFit: 'cover', border: '1px solid #e5e7eb', background: '#f3f4f6' }} />
-                  ) : (
-                    <div style={{ width: '88px', height: '88px', border: '1px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>Sem foto</div>
+              <FormGroup label="Status" helper="Rascunho e Arquivado não aparecem na loja nem podem ser comprados.">
+                <select value={productForm.status} onChange={(e) => setProductForm({ ...productForm, status: e.target.value })} style={inputStyle}>
+                  {Object.entries(PRODUCT_STATUS).map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </FormGroup>
+              <FormGroup label="Estoque (unidades)" helper="Deixe vazio para não controlar. Com 0, o produto aparece como esgotado.">
+                <input type="number" min="0" step="1" value={productForm.stock_quantity} onChange={(e) => setProductForm({ ...productForm, stock_quantity: e.target.value })} style={inputStyle} placeholder="Sem controle" />
+              </FormGroup>
+              <FormGroup label={`Fotos (${productForm.images.length}/${MAX_PRODUCT_IMAGES})`} helper="A primeira é a foto principal. JPG, PNG ou WebP; cada imagem é reduzida automaticamente antes de enviar." style={{ gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-start' }}>
+                  {productForm.images.map((url, index) => (
+                    <div key={url + index} style={{ width: '96px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <img src={url} alt={`Foto ${index + 1}`} style={{ width: '96px', height: '96px', objectFit: 'cover', border: index === 0 ? '2px solid #000' : '1px solid #e5e7eb', background: '#f3f4f6', display: 'block' }} />
+                        {index === 0 && <span style={{ position: 'absolute', left: 0, bottom: 0, background: '#000', color: '#fff', fontSize: '10px', padding: '2px 6px', fontWeight: '700' }}>PRINCIPAL</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                        {index !== 0 && <button type="button" onClick={() => makeImagePrimary(index)} style={{ flex: 1, fontSize: '11px', padding: '3px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Principal</button>}
+                        <button type="button" onClick={() => removeImage(index)} style={{ flex: 1, fontSize: '11px', padding: '3px', border: '1px solid #fecaca', background: '#fff', color: '#dc2626', cursor: 'pointer' }}>Remover</button>
+                      </div>
+                    </div>
+                  ))}
+                  {productForm.images.length < MAX_PRODUCT_IMAGES && (
+                    <label style={{ width: '96px', height: '96px', border: '1px dashed #9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '12px', fontFamily: 'Outfit, sans-serif', fontWeight: '600', cursor: uploadingImage ? 'wait' : 'pointer', opacity: uploadingImage ? 0.6 : 1 }}>
+                      {uploadingImage ? 'Enviando…' : '+ Adicionar foto'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelected} disabled={uploadingImage} style={{ display: 'none' }} />
+                    </label>
                   )}
-                  <label style={{ padding: '8px 14px', border: '1px solid #000', borderRadius: '4px', cursor: uploadingImage ? 'wait' : 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: '600', fontSize: '13px', opacity: uploadingImage ? 0.6 : 1 }}>
-                    {uploadingImage ? 'Enviando…' : (productForm.image_url ? 'Trocar foto' : 'Escolher foto')}
-                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelected} disabled={uploadingImage} style={{ display: 'none' }} />
-                  </label>
                 </div>
               </FormGroup>
               <FormGroup label="Descrição" helper="Descrição detalhada do produto" style={{ gridColumn: '1 / -1' }}>
