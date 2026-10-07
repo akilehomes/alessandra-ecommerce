@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { maskCpf, maskCnpj, maskCep } from '../utils/geo';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 const REGIONS = { BR: 'Brasil', PT: 'Portugal', EU: 'Europa' };
@@ -13,7 +14,7 @@ const EMPTY_PRODUCT = {
   name: '', price: '', category: '', description: '',
   weight: '', width: '', height: '', depth: '',
   location: 'BR', currency: 'BRL', sku: '',
-  status: 'active', stock_quantity: '', images: [],
+  status: 'active', stock_quantity: '', images: [], price_eur: '',
 };
 const CURRENCIES = { BRL: 'R$ (Real)', EUR: '€ (Euro)', USD: '$ (Dólar)' };
 const TAX_TYPES = { ICMS: 'ICMS (Brasil)', IVA: 'IVA (Portugal)', VAT: 'VAT (Europa)', GST: 'GST (Canadá)' };
@@ -54,15 +55,26 @@ const ORDER_FILTERS = [
   { id: 'pending', label: 'Aguardando pagamento' },
 ];
 
-const money = (v) => `R$ ${(Number(v) || 0).toFixed(2)}`;
+const money = (v, currency = 'BRL') => `${currency === 'EUR' ? '€' : 'R$'} ${(Number(v) || 0).toFixed(2)}`;
+const DOC_LABEL = { cpf: 'CPF', cnpj: 'CNPJ', nif: 'NIF', vat: 'IVA / VAT', tax_id: 'Nº de contribuinte' };
+const formatDoc = (type, number) => (type === 'cpf' ? maskCpf(number) : type === 'cnpj' ? maskCnpj(number) : number);
+const COUNTRY_NAME = { BR: 'Brasil', PT: 'Portugal' };
 
 const formatOrderAddress = (addr) => {
   if (!addr) return '';
   const a = typeof addr === 'string' ? (() => { try { return JSON.parse(addr); } catch (e) { return null; } })() : addr;
   if (!a || typeof a !== 'object') return String(addr);
-  const line1 = [a.street, a.number].filter(Boolean).join(', ') + (a.complement ? ` - ${a.complement}` : '');
-  const line2 = [a.city, a.state].filter(Boolean).join(' - ') + (a.cep ? ` · CEP ${a.cep}` : '');
-  return [line1, line2].filter(Boolean).join('\n');
+  const isBR = !a.country || a.country === 'BR';
+  const postalRaw = a.postal_code || a.cep;
+  const postal = postalRaw ? (isBR ? maskCep(postalRaw) : postalRaw) : '';
+  const lines = [
+    a.recipient_name,
+    [a.street, a.number].filter(Boolean).join(', ') + (a.complement ? ` - ${a.complement}` : ''),
+    a.district,
+    [a.city, a.state].filter(Boolean).join(isBR ? ' - ' : ', ') + (postal ? ` · ${isBR ? 'CEP ' : ''}${postal}` : ''),
+    a.country && a.country !== 'BR' ? (COUNTRY_NAME[a.country] || a.country) : '',
+  ];
+  return lines.filter((l) => l && String(l).trim()).join('\n');
 };
 
 export default function AdminDashboardComplete() {
@@ -298,6 +310,7 @@ export default function AdminDashboardComplete() {
       location: product.location || 'BR', currency: product.currency || 'BRL', sku: product.sku || '',
       status: product.status || 'active',
       stock_quantity: product.stock_quantity ?? '',
+      price_eur: product.price_eur ?? '',
       images: (product.images && product.images.length) ? product.images : (product.image_url ? [product.image_url] : []),
     });
     setShowProductModal(true);
@@ -526,7 +539,7 @@ export default function AdminDashboardComplete() {
                                   <td style={{ padding: '12px' }}>{o.created_at ? new Date(o.created_at).toLocaleDateString('pt-BR') : ''}</td>
                                   <td style={{ padding: '12px' }}>{o.customer_name}</td>
                                   <td style={{ padding: '12px' }}>{[o.shipping_carrier, o.shipping_service].filter(Boolean).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).join(' ') || '-'}</td>
-                                  <td style={{ padding: '12px' }}>{money(o.total)}</td>
+                                  <td style={{ padding: '12px' }}>{money(o.total, o.region)}</td>
                                   <td style={{ padding: '12px' }}><span style={{ color: st.color, fontWeight: 700 }}>{st.label}</span></td>
                                 </tr>
                               );
@@ -770,13 +783,30 @@ export default function AdminDashboardComplete() {
                 <div><strong>{orderDetail.customer_name}</strong></div>
                 <div style={{ fontSize: '13px' }}><a href={`mailto:${orderDetail.customer_email}`}>{orderDetail.customer_email}</a></div>
                 {orderDetail.customer_phone && (() => {
-                  const d = String(orderDetail.customer_phone).replace(/\D/g, '');
-                  return <div style={{ fontSize: '13px' }}>{d.length >= 10 ? <a href={`https://wa.me/${d.startsWith('55') ? d : '55' + d}`} target="_blank" rel="noopener noreferrer">{orderDetail.customer_phone} (WhatsApp)</a> : orderDetail.customer_phone}</div>;
+                  const raw = String(orderDetail.customer_phone);
+                  const d = raw.replace(/\D/g, '');
+                  const international = raw.trim().startsWith('+') || (orderDetail.destination_country && orderDetail.destination_country !== 'BR');
+                  const wa = international ? d : (d.startsWith('55') ? d : '55' + d);
+                  return <div style={{ fontSize: '13px' }}>{d.length >= 10 ? <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer">{raw} (WhatsApp)</a> : raw}</div>;
                 })()}
+                <div style={{ fontSize: '13px', marginTop: '8px' }}>
+                  {orderDetail.customer_person_type === 'company' ? <strong>Empresa</strong> : 'Pessoa física'}
+                  {orderDetail.customer_company_name ? <> · {orderDetail.customer_company_name}</> : null}
+                </div>
+                <div style={{ fontSize: '13px' }}>
+                  {orderDetail.customer_document_number
+                    ? <>{DOC_LABEL[orderDetail.customer_document_type] || 'Documento'}: <strong>{formatDoc(orderDetail.customer_document_type, orderDetail.customer_document_number)}</strong></>
+                    : <span style={{ color: '#9ca3af' }}>Sem documento fiscal</span>}
+                </div>
               </div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#6b7280', marginBottom: '6px' }}>Endereço de entrega</div>
                 <div style={{ whiteSpace: 'pre-line', fontSize: '14px' }}>{formatOrderAddress(orderDetail.shipping_address) || 'Não informado'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#6b7280', marginBottom: '6px' }}>Endereço de faturamento</div>
+                <div style={{ whiteSpace: 'pre-line', fontSize: '14px' }}>{formatOrderAddress(orderDetail.billing_address || orderDetail.shipping_address) || 'Não informado'}</div>
+                {!orderDetail.billing_address && orderDetail.shipping_address && <div style={{ fontSize: '12px', color: '#9ca3af' }}>(pedido antigo: igual à entrega)</div>}
               </div>
             </div>
 
@@ -792,24 +822,24 @@ export default function AdminDashboardComplete() {
                     <td style={{ padding: '8px 0' }}>{it.product_name}{it.sku ? <span style={{ color: '#9ca3af' }}> · {it.sku}</span> : null}</td>
                     <td>{it.quantity}</td>
                     <td>{it.weight ? `${Number(it.weight)} kg` : '-'}</td>
-                    <td style={{ textAlign: 'right' }}>{money(Number(it.price) * Number(it.quantity))}</td>
+                    <td style={{ textAlign: 'right' }}>{money(Number(it.price) * Number(it.quantity), orderDetail.region)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
             <div style={{ fontSize: '13px', display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 16px', maxWidth: '320px', marginLeft: 'auto' }}>
-              <span>Subtotal</span><span style={{ textAlign: 'right' }}>{money(orderDetail.subtotal)}</span>
-              {Number(orderDetail.discount) > 0 && <><span>Desconto{orderDetail.coupon_code ? ` (${orderDetail.coupon_code})` : ''}</span><span style={{ textAlign: 'right' }}>-{money(orderDetail.discount)}</span></>}
-              <span>Impostos</span><span style={{ textAlign: 'right' }}>{money(orderDetail.tax)}</span>
-              <span>Frete</span><span style={{ textAlign: 'right' }}>{money(orderDetail.shipping_cost)}</span>
-              <strong>Total</strong><strong style={{ textAlign: 'right' }}>{money(orderDetail.total)}</strong>
+              <span>Subtotal</span><span style={{ textAlign: 'right' }}>{money(orderDetail.subtotal, orderDetail.region)}</span>
+              {Number(orderDetail.discount) > 0 && <><span>Desconto{orderDetail.coupon_code ? ` (${orderDetail.coupon_code})` : ''}</span><span style={{ textAlign: 'right' }}>-{money(orderDetail.discount, orderDetail.region)}</span></>}
+              <span>Impostos</span><span style={{ textAlign: 'right' }}>{money(orderDetail.tax, orderDetail.region)}</span>
+              <span>Frete</span><span style={{ textAlign: 'right' }}>{money(orderDetail.shipping_cost, orderDetail.region)}</span>
+              <strong>Total</strong><strong style={{ textAlign: 'right' }}>{money(orderDetail.total, orderDetail.region)}</strong>
             </div>
 
             <div style={{ background: '#f9fafb', padding: '14px', borderRadius: '6px', margin: '20px 0 0', fontSize: '13px' }}>
               <strong>Frete contratado pelo cliente:</strong>{' '}
               {orderDetail.shipping_carrier || orderDetail.shipping_service
-                ? `${[orderDetail.shipping_carrier, orderDetail.shipping_service].filter(Boolean).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).join(' ')}${orderDetail.shipping_days ? ` · prazo ${orderDetail.shipping_days} dias úteis` : ''} (${money(orderDetail.shipping_cost)})`
+                ? `${[orderDetail.shipping_carrier, orderDetail.shipping_service].filter(Boolean).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).join(' ')}${orderDetail.shipping_days ? ` · prazo ${orderDetail.shipping_days} dias úteis` : ''} (${money(orderDetail.shipping_cost, orderDetail.region)})`
                 : 'não registrado'}
               {orderDetail.payment_id && <div style={{ color: '#6b7280', marginTop: '4px' }}>Pagamento: {orderDetail.payment_id}</div>}
             </div>
@@ -861,6 +891,9 @@ export default function AdminDashboardComplete() {
               </FormGroup>
               <FormGroup label="Preço" required helper="Preço base do produto">
                 <input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} style={inputStyle} />
+              </FormGroup>
+              <FormGroup label="Preço em euro (€)" helper="Preço para vender na Europa (Portugal e UE). Vazio = o produto não é vendido na Europa.">
+                <input type="number" min="0" step="0.01" value={productForm.price_eur} onChange={(e) => setProductForm({ ...productForm, price_eur: e.target.value })} style={inputStyle} placeholder="Não vendido na Europa" />
               </FormGroup>
               <FormGroup label="Moeda" required>
                 <select value={productForm.currency} onChange={(e) => setProductForm({ ...productForm, currency: e.target.value })} style={inputStyle}>

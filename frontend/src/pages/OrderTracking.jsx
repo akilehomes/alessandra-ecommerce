@@ -4,22 +4,28 @@ import { useCartStore } from '../store/cartStore';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-const money = (value) => `R$ ${(Number(value) || 0).toFixed(2)}`;
+// A moeda do pedido vem na coluna region (BRL/EUR); sem ela, assume reais
+let currentSymbol = 'R$';
+const money = (value) => `${currentSymbol} ${(Number(value) || 0).toFixed(2)}`;
 
 // shipping_address pode vir como objeto (JSON) ou texto
 const formatAddress = (addr) => {
   if (!addr) return '';
   const a = typeof addr === 'string' ? (() => { try { return JSON.parse(addr); } catch (e) { return null; } })() : addr;
   if (!a || typeof a !== 'object') return String(addr);
+  const isBR = !a.country || a.country === 'BR';
+  const postal = a.postal_code || a.cep;
   const line1 = [a.street, a.number].filter(Boolean).join(', ') + (a.complement ? ` - ${a.complement}` : '');
-  const line2 = [a.city, a.state].filter(Boolean).join(' - ') + (a.cep ? ` · CEP ${a.cep}` : '');
-  return [line1, line2].filter(Boolean).join('\n');
+  const line2 = [a.city, a.state].filter(Boolean).join(isBR ? ' - ' : ', ') + (postal ? ` · ${isBR ? 'CEP ' : ''}${postal}` : '');
+  const country = !isBR ? (a.country === 'PT' ? 'Portugal' : a.country) : '';
+  return [a.recipient_name, line1, a.district, line2, country].filter(Boolean).join('\n');
 };
 
 export default function OrderTracking() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
+  currentSymbol = order && order.region === 'EUR' ? '€' : 'R$';
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [orderNumber, setOrderNumber] = useState('');

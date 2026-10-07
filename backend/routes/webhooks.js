@@ -6,6 +6,7 @@ const { sendOrderConfirmation } = require('../services/emailService');
 const agentService = require('../services/agentService');
 const { registerCouponUse } = require('../services/couponService');
 const { decrementStockForOrder } = require('../services/stockService');
+const { attachItems } = require('../services/orderService');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -72,7 +73,7 @@ async function handlePaymentSucceeded(paymentIntent) {
   await registerCouponUse(order.coupon_code);
   await decrementStockForOrder(pool, order.id);
   try {
-    await sendOrderConfirmation(order, customerEmail || order.customer_email);
+    await sendOrderConfirmation(await attachItems(pool, order), customerEmail || order.customer_email);
   } catch (err) {
     console.error('Order confirmation email failed:', err.message);
   }

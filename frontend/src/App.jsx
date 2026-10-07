@@ -19,6 +19,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Legal from './pages/Legal';
 import Account from './pages/Account';
 import AdvancedSearch from './pages/AdvancedSearch';
 import Wishlist from './pages/Wishlist';
@@ -79,6 +80,7 @@ function App() {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/account/orders" element={<Account />} />
                   <Route path="/wishlist" element={<Wishlist />} />
+                  <Route path="/legal/:slug" element={<Legal />} />
                   <Route path="/admin" element={<Admin />} />
                 </Routes>
               </main>

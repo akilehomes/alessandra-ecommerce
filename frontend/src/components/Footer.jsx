@@ -30,17 +30,18 @@ export default function Footer() {
           <ul className="space-y-2 text-xs">
             <li><a href="#" className="hover:text-white transition">Contact</a></li>
             <li><a href="#" className="hover:text-white transition">FAQ</a></li>
-            <li><a href="#" className="hover:text-white transition">Shipping</a></li>
-            <li><a href="#" className="hover:text-white transition">Returns</a></li>
+            <li><Link to="/legal/envio" className="hover:text-white transition">Política de envio</Link></li>
+            <li><Link to="/legal/trocas" className="hover:text-white transition">Trocas e devoluções</Link></li>
+            <li><Link to="/track" className="hover:text-white transition">Acompanhar pedido</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-white font-semibold tracking-wide mb-4 text-xs uppercase">LEGAL</h4>
           <ul className="space-y-2 text-xs">
-            <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-            <li><a href="#" className="hover:text-white transition">Shipping Info</a></li>
+            <li><Link to="/legal/privacidade" className="hover:text-white transition">Política de privacidade</Link></li>
+            <li><Link to="/legal/termos" className="hover:text-white transition">Termos de uso</Link></li>
+            <li><Link to="/legal/envio" className="hover:text-white transition">Informações de envio</Link></li>
           </ul>
         </div>
       </div>

@@ -180,6 +180,7 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Shipping to this country is not available yet', code: 'SHIPPING_UNAVAILABLE' });
       }
       shippingCost = Math.round(flat * 100) / 100;
+      chosenShipping = { id: 'flat-eu', carrier: 'Envio internacional', service: 'Padrão', delivery_time: null };
     }
 
     // Cupom: validado no banco e calculado sobre o subtotal do servidor.
@@ -317,7 +318,7 @@ router.get('/user/:userId', authMiddleware, async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, order_number, customer_name, customer_email, status, total, created_at FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+      'SELECT id, order_number, customer_name, customer_email, status, total, region, created_at FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
       [userId, limit, offset]
     );
 
@@ -415,6 +416,7 @@ router.get('/:orderId', async (req, res) => {
       shipping_cost: order.shipping_cost,
       discount: order.discount,
       total: order.total,
+      region: order.region, // moeda do pedido (BRL/EUR)
       created_at: order.created_at,
       shipping_address: order.shipping_address || null,
       items: itemsResult.rows,
