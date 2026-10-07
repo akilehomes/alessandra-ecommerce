@@ -92,6 +92,8 @@ app.use('/api/shipping-integration', require('./routes/shippingIntegration'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/taxes', require('./routes/taxes'));
 app.use('/api/currency', require('./routes/currency'));
+app.use('/api/geo', require('./routes/geo'));
+app.use('/api/addresses', require('./routes/addresses'));
 const emailKey = (req) => `${req.ip}|${String((req.body && req.body.email) || '').toLowerCase()}`;
 app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, key: emailKey, message: 'Too many login attempts. Try again in a few minutes.' }));
 app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 8, key: emailKey, message: 'Too many login attempts. Try again in a few minutes.' }));

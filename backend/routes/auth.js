@@ -6,6 +6,10 @@ const crypto = require('crypto');
 const { pool } = require('../server');
 const authMiddleware = require('../middleware/authMiddleware');
 const { sendPasswordReset } = require('../services/emailService');
+const { getCountry } = require('../services/countries');
+const { validateDocument } = require('../services/documents');
+
+const PROFILE_COLUMNS = 'id, email, name, phone, person_type, company_name, document_type, document_number, state_registration, country';
 
 const JWT_EXPIRATION = '30d';
 const BCRYPT_ROUNDS = 10;
@@ -204,7 +208,7 @@ router.post('/reset-password', async (req, res) => {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, name, phone, created_at FROM users WHERE id = $1',
+      `SELECT ${PROFILE_COLUMNS}, created_at FROM users WHERE id = $1`,
       [req.user.userId]
     );
 
@@ -220,20 +224,45 @@ router.get('/me', authMiddleware, async (req, res) => {
 });
 
 // PUT /api/auth/profile
+// Dados do cliente. O documento fiscal e validado conforme o pais (CPF/CNPJ no Brasil, NIF/VAT na Europa).
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { name, phone } = req.body;
     const userId = req.user.userId;
+    const body = req.body || {};
+    const current = (await pool.query(`SELECT ${PROFILE_COLUMNS} FROM users WHERE id = $1`, [userId])).rows[0];
+    if (!current) return res.status(404).json({ error: 'User not found' });
+
+    const country = getCountry(body.country || current.country);
+    if (!country) return res.status(400).json({ error: 'Country is not supported' });
+
+    const name = body.name === undefined ? current.name : String(body.name).trim().slice(0, 255);
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const phone = body.phone === undefined ? current.phone : (String(body.phone).trim().slice(0, 20) || null);
+    const personType = body.person_type === undefined ? current.person_type : (body.person_type === 'company' ? 'company' : 'individual');
+    const companyName = personType === 'company'
+      ? (body.company_name === undefined ? current.company_name : (String(body.company_name).trim().slice(0, 255) || null))
+      : null;
+    if (personType === 'company' && !companyName) return res.status(400).json({ error: 'Company name is required' });
+
+    // Documento: so e (re)validado quando enviado; vazio apaga
+    let docType = current.document_type;
+    let docNumber = current.document_number;
+    if (body.document_number !== undefined || body.person_type !== undefined || body.country !== undefined) {
+      const rawNumber = body.document_number === undefined ? current.document_number : body.document_number;
+      const check = validateDocument({ country: country.code, personType, type: body.document_type, number: rawNumber });
+      // Perfil pode ser salvo sem documento mesmo no Brasil; ele so e exigido na compra
+      if (!check.ok && String(rawNumber ?? '').trim() !== '') return res.status(400).json({ error: check.error });
+      docType = check.ok ? check.type : null;
+      docNumber = check.ok ? check.number : null;
+    }
+    const stateReg = body.state_registration === undefined ? current.state_registration : (String(body.state_registration).trim().slice(0, 40) || null);
 
     const result = await pool.query(
-      'UPDATE users SET name = COALESCE($1, name), phone = COALESCE($2, phone), updated_at = NOW() WHERE id = $3 RETURNING id, email, name, phone',
-      [name || null, phone || null, userId]
+      `UPDATE users SET name=$1, phone=$2, person_type=$3, company_name=$4, document_type=$5, document_number=$6,
+              state_registration=$7, country=$8, updated_at=NOW()
+       WHERE id=$9 RETURNING ${PROFILE_COLUMNS}`,
+      [name, phone, personType, companyName, docType, docNumber, stateReg, country.code, userId]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update profile error:', error);

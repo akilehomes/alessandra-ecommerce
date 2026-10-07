@@ -7,6 +7,9 @@ const authMiddleware = require('../middleware/authMiddleware');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 const { quoteForCart } = require('../services/shippingQuote');
 const { resolveCoupon } = require('../services/couponService');
+const { getCountry } = require('../services/countries');
+const { normalizeAddress } = require('../services/addressService');
+const { validateDocument } = require('../services/documents');
 
 // POST create order from cart
 router.post('/', async (req, res) => {
@@ -14,35 +17,59 @@ router.post('/', async (req, res) => {
     const {
       cartId,
       items: bodyItems,
-      userId,
       customerEmail,
       customerName,
       customerPhone,
       shippingAddress,
+      billingAddress,
+      billingSameAsShipping,
+      customerPersonType,
+      customerCompanyName,
+      customerDocumentType,
+      customerDocumentNumber,
       paymentMethod,
       couponCode,
-      shippingCost: clientShippingCost,
       shippingMethodId,
-      currency,
-      region,
     } = req.body;
+
+    // Quem e o cliente vem do login (token), nunca do corpo da requisicao
+    const authUser = getRequester(req);
+    const userId = authUser && authUser.userId ? authUser.userId : null;
 
     // Validate required fields
     if (!customerEmail || !shippingAddress || typeof shippingAddress !== 'object') {
       return res.status(400).json({ error: 'Email and shipping address are required' });
     }
 
-    const clean = (v) => String(v ?? '').trim().slice(0, 200);
-    const address = {
-      street: clean(shippingAddress.street),
-      number: clean(shippingAddress.number),
-      complement: clean(shippingAddress.complement),
-      city: clean(shippingAddress.city),
-      state: clean(shippingAddress.state),
-      cep: clean(shippingAddress.cep),
-    };
-    if (!address.street || !address.city || !address.state || !address.cep) {
-      return res.status(400).json({ error: 'Shipping address is incomplete' });
+    // Endereco de entrega validado conforme o pais (sem "country" assume Brasil)
+    const shipNorm = normalizeAddress(shippingAddress);
+    if (shipNorm.error) return res.status(400).json({ error: `Shipping address: ${shipNorm.error}` });
+    const address = shipNorm.address;
+    const country = getCountry(address.country);
+
+    // Regiao e moeda saem do pais de destino, nunca do navegador
+    const region = country.region;
+    const currency = country.currency;
+
+    // Faturamento: por padrao igual a entrega
+    let billing = address;
+    if (billingSameAsShipping === false) {
+      const billNorm = normalizeAddress(billingAddress);
+      if (billNorm.error) return res.status(400).json({ error: `Billing address: ${billNorm.error}` });
+      billing = billNorm.address;
+    }
+
+    // Documento fiscal do cliente (obrigatorio no Brasil; opcional na Europa, exceto empresas)
+    const docCheck = validateDocument({
+      country: billing.country,
+      personType: customerPersonType,
+      type: customerDocumentType,
+      number: customerDocumentNumber,
+    });
+    if (!docCheck.ok) return res.status(400).json({ error: docCheck.error, code: 'INVALID_DOCUMENT' });
+    const companyName = docCheck.personType === 'company' ? String(customerCompanyName || '').trim().slice(0, 255) : null;
+    if (docCheck.personType === 'company' && !companyName) {
+      return res.status(400).json({ error: 'Company name is required', code: 'INVALID_DOCUMENT' });
     }
 
     // Get cart items
@@ -71,7 +98,7 @@ router.post('/', async (req, res) => {
     let productRows;
     try {
       productRows = (await pool.query(
-        "SELECT id, name, price, stock_quantity FROM products WHERE id = ANY($1::uuid[]) AND status = 'active'",
+        "SELECT id, name, price, price_eur, stock_quantity FROM products WHERE id = ANY($1::uuid[]) AND status = 'active'",
         [productIds]
       )).rows;
     } catch (e) {
@@ -98,9 +125,17 @@ router.post('/', async (req, res) => {
         });
       }
     }
+    // Na Europa o preco vem de price_eur; produto sem preco em euro nao e vendido la
+    if (currency === 'EUR' && productRows.some((p) => p.price_eur === null)) {
+      return res.status(400).json({
+        error: 'One or more products are not available for sale in this country yet',
+        code: 'NOT_AVAILABLE_IN_COUNTRY',
+      });
+    }
     cartItems = requested.map((r) => {
       const p = byId.get(r.productId);
-      return { product_id: p.id, product_name: p.name, name: p.name, price: Number(p.price), quantity: r.quantity };
+      const unitPrice = currency === 'EUR' ? Number(p.price_eur) : Number(p.price);
+      return { product_id: p.id, product_name: p.name, name: p.name, price: unitPrice, quantity: r.quantity };
     });
 
     const TAX_RATE_BY_REGION = { BR: 0.18, PT: 0.23, EU: 0.21 };
@@ -110,7 +145,7 @@ router.post('/', async (req, res) => {
     // Frete: no Brasil o servidor cota de novo e so aceita uma opcao que ele mesmo calculou
     let shippingCost;
     let chosenShipping = null; // opcao de frete confirmada pelo servidor
-    if ((region || 'BR') === 'BR') {
+    if (region === 'BR') {
       if (!shippingMethodId) {
         return res.status(400).json({ error: 'A shipping method is required' });
       }
@@ -138,7 +173,13 @@ router.post('/', async (req, res) => {
       shippingCost = Math.round(Number(chosen.price) * 100) / 100;
       chosenShipping = chosen;
     } else {
-      shippingCost = Math.max(0, Number(clientShippingCost) || 0); // TODO: cotar fora do Brasil no servidor
+      // Fora do Brasil o frete e uma tarifa unica definida pelo servidor (EU_SHIPPING_FLAT_EUR); nunca vem do navegador.
+      // Sem a variavel configurada, a venda para a Europa fica indisponivel.
+      const flat = Number(process.env.EU_SHIPPING_FLAT_EUR);
+      if (process.env.EU_SHIPPING_FLAT_EUR === undefined || process.env.EU_SHIPPING_FLAT_EUR === '' || !Number.isFinite(flat) || flat < 0) {
+        return res.status(400).json({ error: 'Shipping to this country is not available yet', code: 'SHIPPING_UNAVAILABLE' });
+      }
+      shippingCost = Math.round(flat * 100) / 100;
     }
 
     // Cupom: validado no banco e calculado sobre o subtotal do servidor.
@@ -167,8 +208,11 @@ router.post('/', async (req, res) => {
         user_id, order_number, status, subtotal, tax, shipping_cost, discount,
         total, customer_name, customer_email, customer_phone,
         payment_method, region, shipping_address, coupon_code,
-        shipping_method_id, shipping_carrier, shipping_service, shipping_days
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17, $18, $19)
+        shipping_method_id, shipping_carrier, shipping_service, shipping_days,
+        destination_country, customer_person_type, customer_company_name,
+        customer_document_type, customer_document_number, billing_address
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17, $18, $19,
+                $20, $21, $22, $23, $24, $25::jsonb)
        RETURNING *`,
       [
         userId,
@@ -183,13 +227,19 @@ router.post('/', async (req, res) => {
         customerEmail,
         customerPhone,
         paymentMethod,
-        currency || 'BRL',
+        currency,
         JSON.stringify(address),
         appliedCouponCode,
         chosenShipping ? chosenShipping.id : null,
         chosenShipping ? chosenShipping.carrier : null,
         chosenShipping ? chosenShipping.service : null,
         chosenShipping && Number.isFinite(Number(chosenShipping.delivery_time)) ? Math.round(Number(chosenShipping.delivery_time)) : null,
+        address.country,
+        docCheck.personType,
+        companyName,
+        docCheck.type,
+        docCheck.number,
+        JSON.stringify(billing),
       ]
     );
 

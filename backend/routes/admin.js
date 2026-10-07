@@ -195,6 +195,8 @@ function parseProductBody(body) {
     name: toText(body.name),
     description: toText(body.description),
     price: toNumber(body.price),
+    price_eur: toNumber(body.price_eur), // vazio = nao vendido na Europa
+    hasPriceEur: Object.prototype.hasOwnProperty.call(body, 'price_eur'),
     category: toText(body.category),
     image_url: toText(body.image_url),
     weight: toNumber(body.weight),
@@ -208,7 +210,7 @@ function parseProductBody(body) {
     stock_quantity: toNumber(body.stock_quantity), // null = sem controle de estoque
     hasStock: Object.prototype.hasOwnProperty.call(body, 'stock_quantity'),
   };
-  for (const key of ['price', 'weight', 'height', 'width', 'depth']) {
+  for (const key of ['price', 'price_eur', 'weight', 'height', 'width', 'depth']) {
     if (data[key] !== null && (!Number.isFinite(data[key]) || data[key] < 0)) {
       return { error: `Invalid value for ${key}` };
     }
@@ -264,12 +266,12 @@ router.post('/products', adminAuthMiddleware, async (req, res) => {
       await client.query('BEGIN');
       const result = await client.query(
         `INSERT INTO products
-           (name, slug, description, price, category, image_url, weight, height, width, depth, sku, location, currency, status, stock_quantity)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, 'BR'), COALESCE($13, 'BRL'), COALESCE($14, 'active'), $15)
+           (name, slug, description, price, category, image_url, weight, height, width, depth, sku, location, currency, status, stock_quantity, price_eur)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, 'BR'), COALESCE($13, 'BRL'), COALESCE($14, 'active'), $15, $16)
          RETURNING *`,
         [data.name, slug, data.description, data.price, data.category, data.image_url,
          data.weight, data.height, data.width, data.depth, data.sku, data.location, data.currency,
-         data.status, data.stock_quantity]
+         data.status, data.stock_quantity, data.price_eur]
       );
       if (data.images) await replaceImages(client, result.rows[0].id, data.images);
       await client.query('COMMIT');
@@ -316,12 +318,13 @@ router.put('/products/:id', adminAuthMiddleware, async (req, res) => {
            currency = COALESCE($12, currency),
            status = COALESCE($14, status),
            stock_quantity = CASE WHEN $15::boolean THEN $16::int ELSE stock_quantity END,
+           price_eur = CASE WHEN $17::boolean THEN $18::numeric ELSE price_eur END,
            updated_at = NOW()
        WHERE id = $13
        RETURNING *`,
       [data.name, data.description, data.price, data.category, data.image_url, data.weight,
        data.height, data.width, data.depth, data.sku, data.location, data.currency, id,
-       data.status, data.hasStock, data.stock_quantity]
+       data.status, data.hasStock, data.stock_quantity, data.hasPriceEur, data.price_eur]
       );
       if (result.rows.length > 0 && data.images) await replaceImages(client, id, data.images);
       await client.query('COMMIT');
