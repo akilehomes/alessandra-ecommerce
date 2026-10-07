@@ -101,7 +101,7 @@ const money = (symbol, v) => `${symbol} ${Number(v || 0).toFixed(2)}`;
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, cartId, clearCart, syncStock } = useCartStore();
-  const { region: siteRegion } = useRegionStore();
+  const { country: siteCountry } = useRegionStore();
   const { appliedCoupon, removeCoupon } = useCouponStore();
   const { user, token, getAuthHeader, updateProfile, fetchUser } = useAuthStore();
   const countries = useCountries();
@@ -112,7 +112,8 @@ export default function Checkout() {
   const [error, setError] = useState(null);
   const [payment, setPayment] = useState(null); // { orderId, clientSecret }
 
-  const defaultCountry = user?.country || (siteRegion === 'PT' ? 'PT' : 'BR');
+  // O pais escolhido no seletor do menu e o ponto de partida do endereco
+  const defaultCountry = siteCountry || user?.country || 'BR';
   const [contact, setContact] = useState({ email: user?.email || '', name: user?.name || '', phone: user?.phone || '' });
   const [savedShipping, setSavedShipping] = useState([]);
   const [savedBilling, setSavedBilling] = useState([]);

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
-import { useRegionStore } from '../store/regionStore';
 import { useAuthStore } from '../store/authStore';
 import { useWishlistStore } from '../store/wishlistStore';
-import { useI18n, LANGUAGES, useLanguageStore } from '../i18n';
+import { useI18n } from '../i18n';
+import LocaleSwitcher from './LocaleSwitcher';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -12,11 +12,8 @@ export default function Navbar() {
     state.items.reduce((sum, item) => sum + item.quantity, 0)
   );
   const wishlistCount = useWishlistStore((state) => state.items.length);
-  const { region, setRegion } = useRegionStore();
   const { user, logout } = useAuthStore();
   const { t } = useI18n();
-  const lang = useLanguageStore((s) => s.lang);
-  const setLang = useLanguageStore((s) => s.setLang);
 
   const handleLogout = () => {
     logout();
@@ -41,27 +38,8 @@ export default function Navbar() {
 
         {/* Right Section */}
         <div className="flex-1 basis-0 min-w-0 flex gap-4 items-center justify-end">
-          {/* Idioma */}
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value)}
-            aria-label={t('nav.language')}
-            style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', padding: '4px 8px', border: '1px solid #000', background: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
-          >
-            {Object.entries(LANGUAGES).map(([code, name]) => <option key={code} value={code} title={name}>{code.toUpperCase()}</option>)}
-          </select>
-
-          {/* Region Selector */}
-          <select
-            aria-label={t('nav.region')}
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', padding: '4px 8px', border: '1px solid #000', background: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
-          >
-            <option value="BR">{t('region.BR')}</option>
-            <option value="PT">{t('region.PT')}</option>
-            <option value="EU">{t('region.EU')}</option>
-          </select>
+          {/* Pais (moeda/precos) e idioma, num seletor so */}
+          <LocaleSwitcher />
 
           {/* Auth Links */}
           <div className="flex gap-3 items-center text-sm whitespace-nowrap">

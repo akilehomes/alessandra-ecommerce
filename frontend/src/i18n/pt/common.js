@@ -77,4 +77,8 @@ export default {
   'err.overStock': 'A quantidade pedida passa do estoque disponível.',
   'err.specialShipping': 'Este pedido precisa de frete especial. Solicite um orçamento.',
   'err.shippingOptionGone': 'A opção de frete escolhida não está mais disponível. Escolha novamente.',
+  'locale.title': 'País e idioma',
+  'locale.language': 'Idioma',
+  'locale.country': 'País / região',
+  'locale.note': 'Preços e frete em {currency}.',
 };

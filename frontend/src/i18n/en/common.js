@@ -77,4 +77,8 @@ export default {
   'err.overStock': 'The requested quantity exceeds the available stock.',
   'err.specialShipping': 'This order needs special shipping. Please request a quote.',
   'err.shippingOptionGone': 'The selected shipping option is no longer available. Please choose again.',
+  'locale.title': 'Country and language',
+  'locale.language': 'Language',
+  'locale.country': 'Country / region',
+  'locale.note': 'Prices and shipping in {currency}.',
 };
