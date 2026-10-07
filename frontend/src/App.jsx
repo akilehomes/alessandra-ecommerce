@@ -50,6 +50,8 @@ function App() {
       <Routes>
         {/* Admin routes - no navbar/footer */}
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/forgot-password" element={<ForgotPassword admin />} />
+        <Route path="/admin/reset-password" element={<ResetPassword admin />} />
         <Route path="/admin/dashboard" element={<AdminDashboardComplete />} />
 
         {/* Public routes - with navbar/footer */}

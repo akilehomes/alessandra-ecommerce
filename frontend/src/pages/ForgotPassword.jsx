@@ -5,7 +5,9 @@ import './Auth.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-export default function ForgotPassword() {
+export default function ForgotPassword({ admin = false }) {
+  const base = admin ? '/admin' : '/auth';
+  const loginPath = admin ? '/admin/login' : '/login';
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -16,7 +18,7 @@ export default function ForgotPassword() {
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      await axios.post(`${API_URL}${base}/forgot-password`, { email });
       setSent(true);
     } catch (err) {
       setError(
@@ -41,7 +43,7 @@ export default function ForgotPassword() {
               Confira também a caixa de spam.
             </div>
             <div className="auth-footer">
-              <p><Link to="/login">Voltar para o login</Link></p>
+              <p><Link to={loginPath}>Voltar para o login</Link></p>
             </div>
           </>
         ) : (
@@ -66,7 +68,7 @@ export default function ForgotPassword() {
               </button>
             </form>
             <div className="auth-footer">
-              <p><Link to="/login">Voltar para o login</Link></p>
+              <p><Link to={loginPath}>Voltar para o login</Link></p>
             </div>
           </>
         )}

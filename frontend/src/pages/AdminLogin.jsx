@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -10,6 +10,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     // Check if already logged in
@@ -93,21 +94,38 @@ export default function AdminLogin() {
             <label style={{display: 'block', fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', marginBottom: '8px', textTransform: 'uppercase'}}>
               Senha
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '4px',
-                fontFamily: 'Outfit, sans-serif',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
+            <div style={{position: 'relative'}}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                style={{
+                  width: '100%',
+                  padding: '12px 84px 12px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  fontFamily: 'Outfit, sans-serif',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-pressed={showPassword}
+                style={{position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', color: '#444', padding: '6px 8px'}}
+              >
+                {showPassword ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+            <div style={{textAlign: 'right', marginTop: '8px'}}>
+              <Link to="/admin/forgot-password" style={{fontFamily: 'Outfit, sans-serif', fontSize: '13px', color: '#444'}}>
+                Esqueci minha senha
+              </Link>
+            </div>
           </div>
 
           <button

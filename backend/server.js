@@ -95,6 +95,8 @@ app.use('/api/currency', require('./routes/currency'));
 const emailKey = (req) => `${req.ip}|${String((req.body && req.body.email) || '').toLowerCase()}`;
 app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, key: emailKey, message: 'Too many login attempts. Try again in a few minutes.' }));
 app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 8, key: emailKey, message: 'Too many login attempts. Try again in a few minutes.' }));
+app.use('/api/admin/forgot-password', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, key: emailKey, message: 'Too many requests. Try again later.' }));
+app.use('/api/admin/reset-password', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many attempts. Try again later.' }));
 app.use('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 'Too many sign-ups from this address. Try again later.' }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));

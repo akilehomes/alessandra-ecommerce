@@ -27,6 +27,7 @@ const FILES = [
   'migration-product-media.sql',
   'migration-orders-coupon.sql',
   'migration-orders-shipping-method.sql',
+  'migration-admin-reset.sql',
 ];
 
 async function main() {

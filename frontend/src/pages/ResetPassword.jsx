@@ -6,7 +6,11 @@ import './Auth.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-export default function ResetPassword() {
+export default function ResetPassword({ admin = false }) {
+  const base = admin ? '/admin' : '/auth';
+  const loginPath = admin ? '/admin/login' : '/login';
+  const forgotPath = admin ? '/admin/forgot-password' : '/forgot-password';
+  const minLen = admin ? 8 : 6;
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const [password, setPassword] = useState('');
@@ -19,8 +23,8 @@ export default function ResetPassword() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
+    if (password.length < minLen) {
+      setError(`A senha deve ter pelo menos ${minLen} caracteres.`);
       return;
     }
     if (password !== confirm) {
@@ -30,7 +34,7 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/reset-password`, { token, password });
+      await axios.post(`${API_URL}${base}/reset-password`, { token, password });
       setDone(true);
     } catch (err) {
       setError(
@@ -50,7 +54,7 @@ export default function ResetPassword() {
           <h1>Nova senha</h1>
           <div className="error-message">Link inválido.</div>
           <div className="auth-footer">
-            <p><Link to="/forgot-password">Pedir um novo link</Link></p>
+            <p><Link to={forgotPath}>Pedir um novo link</Link></p>
           </div>
         </div>
       </div>
@@ -65,7 +69,7 @@ export default function ResetPassword() {
         {done ? (
           <>
             <div className="success-message">Senha atualizada com sucesso.</div>
-            <Link to="/login" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+            <Link to={loginPath} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
               Entrar
             </Link>
           </>
@@ -81,7 +85,7 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
-                  minLength="6"
+                  minLength={minLen}
                 />
               </div>
               <div className="form-group">
@@ -92,7 +96,7 @@ export default function ResetPassword() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
-                  minLength="6"
+                  minLength={minLen}
                 />
               </div>
               <button type="submit" disabled={loading} className="btn-primary">

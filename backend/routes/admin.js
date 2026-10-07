@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { pool } = require('../server');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
-const { sendShippingNotification } = require('../services/emailService');
+const { sendShippingNotification, sendPasswordReset } = require('../services/emailService');
 
 const JWT_EXPIRATION = '7d'; // admin: sessao mais curta
 const BCRYPT_ROUNDS = 10;
@@ -20,6 +21,71 @@ const validatePassword = (password) => {
 };
 
 // ============ AUTHENTICATION ============
+
+const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
+
+// POST /api/admin/forgot-password
+// Resposta sempre igual, exista ou nao o admin (limite de tentativas aplicado no server.js)
+router.post('/forgot-password', async (req, res) => {
+  const generic = { message: 'If this email is registered, you will receive instructions shortly.' };
+  try {
+    const { email } = req.body;
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({ error: 'A valid email is required' });
+    }
+    const result = await pool.query(
+      'SELECT id, full_name, email FROM admin_users WHERE email = $1 AND is_active = true',
+      [email.toLowerCase()]
+    );
+    if (result.rows.length > 0) {
+      const admin = result.rows[0];
+      const token = crypto.randomBytes(32).toString('hex');
+      await pool.query(
+        `UPDATE admin_users
+         SET password_reset_token = $1, password_reset_expiry = NOW() + INTERVAL '60 minutes'
+         WHERE id = $2`,
+        [sha256(token), admin.id]
+      );
+      const resetUrl = `${(process.env.FRONTEND_URL || '').replace(/\/$/, '')}/admin/reset-password?token=${token}`;
+      if (process.env.LOG_RESET_LINKS === 'true') {
+        console.log('[DEV] Link de redefinicao (admin):', resetUrl); // somente dev
+      }
+      await sendPasswordReset(admin.email, admin.full_name, resetUrl);
+    }
+    res.json(generic);
+  } catch (error) {
+    console.error('Admin forgot password error:', error.message);
+    res.json(generic);
+  }
+});
+
+// POST /api/admin/reset-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) {
+      return res.status(400).json({ error: 'Invalid or expired link' });
+    }
+    if (!validatePassword(password)) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const result = await pool.query(
+      `UPDATE admin_users
+       SET password_hash = $1, password_reset_token = NULL, password_reset_expiry = NULL, updated_at = NOW()
+       WHERE password_reset_token = $2 AND password_reset_expiry > NOW() AND is_active = true
+       RETURNING id`,
+      [passwordHash, sha256(token)]
+    );
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired link' });
+    }
+    res.json({ message: 'Password updated. You can now sign in.' });
+  } catch (error) {
+    console.error('Admin reset password error:', error.message);
+    res.status(500).json({ error: 'Could not reset password' });
+  }
+});
 
 // POST /api/admin/login
 router.post('/login', async (req, res) => {
