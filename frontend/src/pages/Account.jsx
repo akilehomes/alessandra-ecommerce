@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import AccountProfile from '../components/AccountProfile';
+import AccountAddresses from '../components/AccountAddresses';
 import './Account.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user, token, logout, getAuthHeader } = useAuthStore();
+  const { user, token, logout, getAuthHeader, fetchUser } = useAuthStore();
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
-  const [formData, setFormData] = useState({ name: '', phone: '' });
 
   useEffect(() => {
     if (!token) {
@@ -21,10 +22,12 @@ export default function Account() {
     }
 
     fetchOrders();
-    if (user) {
-      setFormData({ name: user.name || '', phone: user.phone || '' });
-    }
-  }, [token, navigate, user]);
+  }, [token, navigate, user?.id]);
+
+  // Carrega o perfil completo (documento, pais...) uma vez ao abrir a conta
+  useEffect(() => {
+    if (token) fetchUser();
+  }, [token, fetchUser]);
 
   const fetchOrders = async () => {
     try {
@@ -42,16 +45,6 @@ export default function Account() {
   const handleLogout = () => {
     logout();
     navigate('/');
-  };
-
-  const handleProfileChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    // Implementation for updating profile would go here
-    alert('Profile update feature coming soon');
   };
 
   if (!user) {
@@ -93,7 +86,13 @@ export default function Account() {
           className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
           onClick={() => setActiveTab('profile')}
         >
-          Perfil
+          Dados pessoais
+        </button>
+        <button
+          className={`tab ${activeTab === 'addresses' ? 'active' : ''}`}
+          onClick={() => setActiveTab('addresses')}
+        >
+          Endereços
         </button>
       </div>
 
@@ -125,7 +124,7 @@ export default function Account() {
                     <div className="order-details">
                       <div className="detail">
                         <span>Total:</span>
-                        <strong>R$ {parseFloat(order.total).toFixed(2)}</strong>
+                        <strong>{order.region === 'EUR' ? '€' : 'R$'} {parseFloat(order.total).toFixed(2)}</strong>
                       </div>
                     </div>
                   </div>
@@ -135,41 +134,8 @@ export default function Account() {
           </div>
         )}
 
-        {activeTab === 'profile' && (
-          <div className="profile-section">
-            <h2>Informações Pessoais</h2>
-            <form onSubmit={handleUpdateProfile}>
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input type="email" value={user.email} disabled />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="name">Nome</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleProfileChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="phone">Telefone</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleProfileChange}
-                />
-              </div>
-
-              <button type="submit" className="btn-primary">
-                Atualizar Perfil
-              </button>
-            </form>
-          </div>
-        )}
+        {activeTab === 'profile' && <AccountProfile key={user.id} />}
+        {activeTab === 'addresses' && <AccountAddresses />}
       </div>
     </div>
   );

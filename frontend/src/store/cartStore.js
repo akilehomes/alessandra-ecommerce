@@ -40,7 +40,8 @@ export const useCartStore = create((set, get) => ({
         const stock = data.stock_quantity === null || data.stock_quantity === undefined ? null : Number(data.stock_quantity);
         if (stock === 0) return null;
         const quantity = stock === null ? i.quantity : Math.min(i.quantity, stock);
-        return { ...i, stock, quantity };
+        const price = Number(data.price);
+        return { ...i, stock, quantity, price: Number.isFinite(price) ? price : i.price, price_eur: data.price_eur == null ? null : Number(data.price_eur) };
       } catch (error) {
         // 404: produto arquivado ou removido. Outros erros (rede): mantem o item como esta.
         return error.response && error.response.status === 404 ? null : i;

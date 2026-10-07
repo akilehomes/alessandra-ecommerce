@@ -30,6 +30,18 @@ router.post('/calculate', rateLimit, async (req, res) => {
       if (!country || !zipCode) {
         return res.status(400).json({ error: 'Missing required fields: country, zipCode, items' });
       }
+      // Fora do Brasil: tarifa unica definida no servidor (EU_SHIPPING_FLAT_EUR), a mesma usada ao criar o pedido
+      if (String(country).toUpperCase() !== 'BR') {
+        const raw = process.env.EU_SHIPPING_FLAT_EUR;
+        const flat = Number(raw);
+        if (raw === undefined || raw === '' || !Number.isFinite(flat) || flat < 0) {
+          return res.status(400).json({ error: 'Shipping to this country is not available yet', code: 'SHIPPING_UNAVAILABLE' });
+        }
+        return res.json({
+          country, zipCode, timestamp: new Date(),
+          options: [{ id: 'flat-eu', carrier: 'Envio internacional', service: 'Padrão', price: Math.round(flat * 100) / 100, delivery_time: null, currency: 'EUR' }],
+        });
+      }
       const options = await quoteForCart({ items, zipCode, country });
       return res.json({ country, zipCode, options: options || [], timestamp: new Date() });
     }

@@ -3,10 +3,19 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
+// Le a sessao salva ja na criacao do store: assim paginas protegidas nao mandam o cliente logado para o login ao recarregar
+const readSession = () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const user = JSON.parse(localStorage.getItem('authUser') || 'null');
+    return token && user ? { token, user, isAuthenticated: true } : { token: null, user: null, isAuthenticated: false };
+  } catch (e) {
+    return { token: null, user: null, isAuthenticated: false };
+  }
+};
+
 export const useAuthStore = create((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  ...readSession(),
   isLoading: false,
   error: null,
 
@@ -98,6 +107,7 @@ export const useAuthStore = create((set) => ({
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      localStorage.setItem('authUser', JSON.stringify(response.data));
       set({ user: response.data, isLoading: false });
       return response.data;
     } catch (error) {
@@ -108,12 +118,12 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // Update profile
-  updateProfile: async (name, phone) => {
+  // Update profile: recebe os campos a alterar (name, phone, country, person_type, company_name, document_number...)
+  updateProfile: async (fields) => {
     set({ isLoading: true, error: null });
     try {
       const token = localStorage.getItem('authToken');
-      const response = await axios.put(`${API_URL}/auth/profile`, { name, phone }, {
+      const response = await axios.put(`${API_URL}/auth/profile`, fields, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

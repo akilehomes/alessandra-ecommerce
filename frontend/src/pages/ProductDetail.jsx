@@ -68,6 +68,7 @@ export default function ProductDetail() {
         image_url: product.image_url,
         quantity: parseInt(quantity),
         stock,
+        price_eur: product.price_eur == null ? null : Number(product.price_eur),
       });
       setAddedItem({
         name: product.name,

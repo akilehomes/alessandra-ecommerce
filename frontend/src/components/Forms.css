@@ -1,0 +1,23 @@
+.fx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.fx-field { display: flex; flex-direction: column; min-width: 0; }
+.fx-field.full { grid-column: 1 / -1; }
+.fx-field label { font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; color: #222; }
+.fx-field input, .fx-field select { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-family: 'Outfit', sans-serif; font-size: 14px; background: #fff; }
+.fx-field input:focus, .fx-field select:focus { outline: none; border-color: #000; }
+.fx-field input:disabled { background: #f3f4f6; color: #6b7280; }
+.fx-hint { font-size: 12px; color: #6b7280; margin-top: 4px; }
+.fx-seg { display: inline-flex; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; }
+.fx-seg button { padding: 9px 16px; border: none; background: #fff; cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600; }
+.fx-seg button.on { background: #000; color: #fff; }
+.fx-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #fff; }
+.fx-card.selected { border-color: #000; box-shadow: 0 0 0 1px #000; }
+.fx-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #000; color: #fff; margin-left: 8px; vertical-align: middle; }
+.fx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fx-btn { padding: 9px 16px; border: 1px solid #000; background: #000; color: #fff; border-radius: 4px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 13px; }
+.fx-btn.ghost { background: #fff; color: #000; }
+.fx-btn.danger { background: #fff; color: #dc2626; border-color: #fecaca; }
+.fx-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fx-msg { padding: 10px 12px; border-radius: 4px; font-size: 13px; margin: 0 0 14px; }
+.fx-msg.ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.fx-msg.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+@media (max-width: 600px) { .fx-grid { grid-template-columns: 1fr; } }

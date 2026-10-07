@@ -26,7 +26,7 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
 
       const response = await axios.post(`${API_URL}/shipping-integration/calculate`, {
         country: country.toUpperCase() || 'BR',
-        zipCode: zipCode.replace(/\D/g, ''),
+        zipCode: country.toUpperCase() === 'BR' ? zipCode.replace(/\D/g, '') : zipCode,
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
 
@@ -155,7 +155,7 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
                   {formatPrice(option.price)}
                 </p>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
-                  {option.delivery_time} dia{option.delivery_time > 1 ? 's' : ''}
+                  {option.delivery_time ? `${option.delivery_time} dia${option.delivery_time > 1 ? 's' : ''}` : 'Prazo informado no envio'}
                 </p>
               </div>
             </div>
