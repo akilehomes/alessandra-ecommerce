@@ -5,6 +5,8 @@ import { useRegionStore } from '../store/regionStore';
 import axios from 'axios';
 import ShippingCalculator from '../components/ShippingCalculator';
 import { useCouponStore, computeDiscount } from '../store/couponStore';
+import { useI18n } from '../i18n';
+import { currencyOfRegion, unitPriceFor } from '../utils/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -16,7 +18,8 @@ const REGION_CONFIG = {
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, total, updateQuantity, removeItem, syncStock } = useCartStore();
+  const { items, updateQuantity, removeItem, syncStock } = useCartStore();
+  const { t, money } = useI18n();
 
   // Ao abrir o carrinho, confere estoque e disponibilidade atuais de cada item
   useEffect(() => { syncStock(); }, [syncStock, items.length]);
@@ -26,7 +29,13 @@ export default function Cart() {
   const [couponCode, setCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState(null); // { type: 'ok' | 'error', text }
   const [couponLoading, setCouponLoading] = useState(false);
-  const discount = computeDiscount(appliedCoupon, total); // acompanha mudancas no carrinho
+  // Moeda da regiao; em euro, usa o preco em euro de cada item (sem preco em euro = nao vendido la)
+  const currency = currencyOfRegion(region);
+  const lineUnit = (item) => unitPriceFor(item, currency);
+  const unavailable = items.some((i) => lineUnit(i) === null);
+  const total = items.reduce((sum, i) => sum + (lineUnit(i) || 0) * i.quantity, 0);
+  // Cupom so vale em reais (valores fixos sao em R$)
+  const discount = currency === 'BRL' ? computeDiscount(appliedCoupon, total) : 0;
   const [specialShipping, setSpecialShipping] = useState(false); // ha item sem frete automatico
   const [shipping, setShipping] = useState(null); // opcao de frete escolhida (somente Brasil)
 
@@ -39,15 +48,15 @@ export default function Cart() {
       const response = await axios.post(`${API_URL}/coupons/validate`, { code, subtotal: total });
       applyCoupon(response.data);
       setCouponCode('');
-      setCouponMessage({ type: 'ok', text: 'Cupom aplicado.' });
+      setCouponMessage({ type: 'ok', text: t('cart.couponOk') });
     } catch (error) {
       const reasons = {
-        'Invalid coupon code': 'Cupom inválido.',
-        'Coupon has expired': 'Este cupom expirou.',
-        'Coupon usage limit reached': 'Este cupom atingiu o limite de usos.',
+        'Invalid coupon code': t('cart.couponInvalid'),
+        'Coupon has expired': t('cart.couponExpired'),
+        'Coupon usage limit reached': t('cart.couponLimit'),
       };
       const apiMessage = error.response?.data?.error;
-      setCouponMessage({ type: 'error', text: reasons[apiMessage] || 'Não foi possível aplicar o cupom.' });
+      setCouponMessage({ type: 'error', text: reasons[apiMessage] || t('cart.couponFail') });
     } finally {
       setCouponLoading(false);
     }
@@ -63,16 +72,16 @@ export default function Cart() {
       <div className="pt-16 min-h-screen bg-white">
         <div className="max-w-7xl mx-auto py-24 px-6 text-center">
           <h1 style={{fontFamily: 'Outfit, sans-serif', fontSize: '36px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase'}}>
-            Cart
+            {t('cart.title')}
           </h1>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '16px', fontStyle: 'italic', fontWeight: '300', marginBottom: '32px', color: '#666'}}>
-            Seu carrinho está vazio
+            {t('cart.empty')}
           </p>
           <button
             onClick={() => navigate('/shop')}
             style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '10px 24px', border: '1px solid #000', background: '#000', color: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
           >
-            Continue Shopping
+            {t('common.continueShopping')}
           </button>
         </div>
       </div>
@@ -83,7 +92,7 @@ export default function Cart() {
     <div className="pt-16 min-h-screen bg-white">
       <div className="max-w-7xl mx-auto py-24 px-6">
         <h1 style={{fontFamily: 'Outfit, sans-serif', fontSize: '36px', fontWeight: '700', letterSpacing: '1px', marginBottom: '32px', textTransform: 'uppercase'}}>
-          Cart
+          {t('cart.title')}
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -101,7 +110,7 @@ export default function Cart() {
                     {item.name}
                   </h3>
                   <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', marginBottom: '16px'}}>
-                    {regionConfig.symbol} {Number(item.price).toFixed(2)}
+                    {lineUnit(item) === null ? t('product.unavailableRegion') : money(lineUnit(item), currency)}
                   </p>
 
                   <div className="flex items-center gap-4">
@@ -125,7 +134,7 @@ export default function Cart() {
                     </div>
                     {item.stock != null && item.quantity >= item.stock && (
                       <span style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', color: '#d97706'}}>
-                        Máximo disponível: {item.stock}
+                        {t('cart.max', { n: item.stock })}
                       </span>
                     )}
 
@@ -133,14 +142,14 @@ export default function Cart() {
                       onClick={() => removeItem(item.productId)}
                       style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', color: '#999', cursor: 'pointer', textDecoration: 'underline'}}
                     >
-                      Remove
+                      {t('cart.remove')}
                     </button>
                   </div>
                 </div>
 
                 <div style={{textAlign: 'right'}}>
                   <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700'}}>
-                    {regionConfig.symbol} {(Number(item.price) * item.quantity).toFixed(2)}
+                    {lineUnit(item) === null ? '—' : money(lineUnit(item) * item.quantity, currency)}
                   </p>
                 </div>
               </div>
@@ -163,59 +172,60 @@ export default function Cart() {
           <div>
             <div style={{border: '1px solid #000', padding: '24px'}}>
               <h2 style={{fontFamily: 'Outfit, sans-serif', fontSize: '16px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px', textTransform: 'uppercase'}}>
-                Order Summary
+                {t('cart.summary')}
               </h2>
               <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', color: '#999', marginBottom: '16px', textTransform: 'uppercase'}}>
-                {regionConfig.name}
+                {t('cart.regionNote', { currency })}
               </p>
 
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'Outfit, sans-serif', fontSize: '14px'}}>
-                <span>Subtotal:</span>
-                <span>{regionConfig.symbol} {total.toFixed(2)}</span>
+                <span>{t('cart.subtotal')}</span>
+                <span>{money(total, currency)}</span>
               </div>
 
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'Outfit, sans-serif', fontSize: '12px', color: '#d97706'}}>
-                <span>Tax ({Math.round(regionConfig.tax * 100)}%):</span>
-                <span>{regionConfig.symbol} {(total * regionConfig.tax).toFixed(2)}</span>
+                <span>{t('cart.tax', { rate: Math.round(regionConfig.tax * 100) })}</span>
+                <span>{money(total * regionConfig.tax, currency)}</span>
               </div>
 
               {discount > 0 && (
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'Outfit, sans-serif', fontSize: '14px', color: '#10b981'}}>
-                  <span>Discount ({appliedCoupon?.code}):</span>
-                  <span>-{regionConfig.symbol} {discount.toFixed(2)}</span>
+                  <span>{t('cart.discount', { code: appliedCoupon?.code })}</span>
+                  <span>-{money(discount, currency)}</span>
                 </div>
               )}
 
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'Outfit, sans-serif', fontSize: '14px'}}>
-                <span>Shipping:</span>
+                <span>{t('cart.shipping')}</span>
                 <span>
-                  {shipping ? `${regionConfig.symbol} ${Number(shipping.price).toFixed(2)}` : (region === 'BR' ? 'Informe o CEP' : 'TBD')}
+                  {shipping ? money(Number(shipping.price), currency) : (region === 'BR' ? t('cart.enterZip') : t('cart.atCheckout'))}
                 </span>
               </div>
 
               <div style={{display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #000', marginBottom: '20px', fontFamily: 'Outfit, sans-serif', fontSize: '14px', fontWeight: '700'}}>
-                <span>Total:</span>
-                <span>{regionConfig.symbol} {(total + (total * regionConfig.tax) - discount + (shipping ? Number(shipping.price) : 0)).toFixed(2)}</span>
+                <span>{t('cart.total')}</span>
+                <span>{money(total + (total * regionConfig.tax) - discount + (shipping ? Number(shipping.price) : 0), currency)}</span>
               </div>
 
-              {/* Coupon */}
+              {/* Coupon (apenas em reais) */}
+              {currency === 'BRL' && (
               <div style={{marginBottom: '16px'}}>
                 {appliedCoupon ? (
                   <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Outfit, sans-serif', fontSize: '12px', padding: '10px 12px', background: '#f3f3f3'}}>
-                    <span>Cupom <strong>{appliedCoupon.code}</strong> aplicado</span>
+                    <span>{t('cart.couponApplied', { code: appliedCoupon.code })}</span>
                     <button
                       onClick={handleRemoveCoupon}
                       style={{background: 'none', border: 'none', color: '#666', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', fontSize: '11px'}}
                     >
-                      Remover
+                      {t('cart.remove')}
                     </button>
                   </div>
                 ) : (
                   <>
                     <input
                       type="text"
-                      placeholder="Coupon code"
-                      aria-label="Código do cupom"
+                      placeholder={t('cart.couponPh')}
+                      aria-label={t('cart.couponPh')}
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
@@ -226,7 +236,7 @@ export default function Cart() {
                       disabled={couponLoading}
                       style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '8px', width: '100%', border: '1px solid #000', background: '#fff', color: '#000', cursor: couponLoading ? 'wait' : 'pointer', textTransform: 'uppercase', opacity: couponLoading ? 0.6 : 1}}
                     >
-                      {couponLoading ? 'Verificando…' : 'Apply Coupon'}
+                      {couponLoading ? t('cart.verifying') : t('cart.apply')}
                     </button>
                   </>
                 )}
@@ -236,17 +246,23 @@ export default function Cart() {
                   </p>
                 )}
               </div>
+              )}
 
               <button
                 onClick={() => navigate('/checkout')}
-                disabled={specialShipping}
+                disabled={specialShipping || unavailable}
                 style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px', width: '100%', border: '1px solid #000', background: '#000', color: '#fff', cursor: specialShipping ? 'not-allowed' : 'pointer', textTransform: 'uppercase', marginBottom: specialShipping ? '8px' : '12px', opacity: specialShipping ? 0.45 : 1}}
               >
-                Proceed to Checkout
+                {t('cart.checkout')}
               </button>
               {specialShipping && (
                 <p role="status" style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', color: '#666', margin: '0 0 12px'}}>
-                  Há um item com frete especial. Peça o orçamento de frete ao lado ou remova o item para finalizar.
+                  {t('cart.specialNote')}
+                </p>
+              )}
+              {unavailable && (
+                <p role="status" style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', color: '#b91c1c', margin: '0 0 12px'}}>
+                  {t('cart.unavailable')}
                 </p>
               )}
 
@@ -254,7 +270,7 @@ export default function Cart() {
                 onClick={() => navigate('/shop')}
                 style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px', width: '100%', border: '1px solid #000', background: '#fff', color: '#000', cursor: 'pointer', textTransform: 'uppercase'}}
               >
-                Continue Shopping
+                {t('common.continueShopping')}
               </button>
             </div>
           </div>

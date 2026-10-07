@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useI18n } from '../i18n';
+import { ptError } from '../utils/errors';
 import PasswordInput from '../components/PasswordInput';
 import './Auth.css';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { register, isLoading, error } = useAuthStore();
   const [formData, setFormData] = useState({
     email: '',
@@ -22,7 +25,7 @@ export default function Register() {
     e.preventDefault();
     
     if (formData.password.length < 6) {
-      alert('Senha deve ter pelo menos 6 caracteres');
+      alert(t('auth.passwordMin', { n: 6 }));
       return;
     }
 
@@ -35,12 +38,12 @@ export default function Register() {
   return (
     <div className="auth-container">
       <div className="auth-form">
-        <h1>Criar Conta</h1>
-        {error && <div className="error-message">{error}</div>}
+        <h1>{t('auth.registerTitle')}</h1>
+        {error && <div className="error-message">{ptError(error)}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="name">Nome Completo</label>
+            <label htmlFor="name">{t('auth.fullName')}</label>
             <input
               type="text"
               id="name"
@@ -52,7 +55,7 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t('auth.email')}</label>
             <input
               type="email"
               id="email"
@@ -64,7 +67,7 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="phone">Telefone (opcional)</label>
+            <label htmlFor="phone">{t('auth.phoneOptional')}</label>
             <input
               type="tel"
               id="phone"
@@ -75,7 +78,7 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Senha</label>
+            <label htmlFor="password">{t('auth.password')}</label>
             <PasswordInput
               id="password"
               name="password"
@@ -87,12 +90,12 @@ export default function Register() {
           </div>
 
           <button type="submit" disabled={isLoading} className="btn-primary">
-            {isLoading ? 'Criando conta...' : 'Criar Conta'}
+            {isLoading ? t('auth.creating') : t('auth.registerTitle')}
           </button>
         </form>
 
         <div className="auth-footer">
-          <p>Já tem conta? <Link to="/login">Entrar</Link></p>
+          <p>{t('auth.haveAccount')} <Link to="/login">{t('auth.loginTitle')}</Link></p>
         </div>
       </div>
     </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
+import { useI18n } from '../i18n';
+import { currencyOfRegion, unitPriceFor } from '../utils/pricing';
 
 const REGION_CONFIG = {
   BR: { name: 'Brasil', symbol: 'R$', tax: 0.18 },
@@ -13,7 +15,9 @@ export default function ProductCard({ product }) {
   const [isHovered, setIsHovered] = useState(false);
   const addToCart = useCartStore((state) => state.addItem);
   const { region } = useRegionStore();
-  const regionConfig = REGION_CONFIG[region];
+  const { t, money } = useI18n();
+  const currencyCode = currencyOfRegion(region);
+  const unit = unitPriceFor(product, currencyCode);
 
   // stock_quantity vazio = sem controle de estoque (sempre disponivel)
   const inStock = product.stock_quantity == null || product.stock_quantity > 0;
@@ -29,7 +33,7 @@ export default function ProductCard({ product }) {
       stock: product.stock_quantity ?? null,
       price_eur: product.price_eur == null ? null : Number(product.price_eur),
     });
-    alert('Produto adicionado ao carrinho!');
+    alert(t('wishlist.added'));
   };
 
   return (
@@ -62,13 +66,13 @@ export default function ProductCard({ product }) {
           {/* Stock Badge */}
           {!inStock && (
             <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 text-xs uppercase font-semibold">
-              Esgotado
+              {t('product.soldOut')}
             </div>
           )}
         </div>
 
         <h3 className="product-name">{product.name}</h3>
-        <p className="product-price">{regionConfig.symbol} {Number(product.price).toFixed(2)}</p>
+        <p className="product-price">{unit === null ? t('product.unavailableRegion') : money(unit, currencyCode)}</p>
       </div>
     </Link>
   );

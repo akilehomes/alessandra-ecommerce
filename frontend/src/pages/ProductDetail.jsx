@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
@@ -8,6 +8,8 @@ import ReviewStats from '../components/ReviewStats';
 import ReviewForm from '../components/ReviewForm';
 import ReviewsList from '../components/ReviewsList';
 import WishlistButton from '../components/WishlistButton';
+import { useI18n } from '../i18n';
+import { currencyOfRegion, unitPriceFor } from '../utils/pricing';
 import AddedToCartModal from '../components/AddedToCartModal';
 import ShippingCalculator from '../components/ShippingCalculator';
 
@@ -27,6 +29,7 @@ export default function ProductDetail() {
   const [reviewsRefresh, setReviewsRefresh] = useState(0);
   const { addItem } = useCartStore();
   const { region } = useRegionStore();
+  const { t, money } = useI18n();
 
   useEffect(() => {
     fetchProduct();
@@ -59,8 +62,10 @@ export default function ProductDetail() {
   const outOfStock = stock !== null && stock <= 0;
   const maxQuantity = stock !== null ? Math.max(stock, 1) : Infinity;
 
+  const unit = product ? unitPriceFor(product, currencyOfRegion(region)) : null;
+
   const handleAddToCart = () => {
-    if (product && !outOfStock) {
+    if (product && !outOfStock && unit !== null) {
       addItem({
         productId: product.id,
         name: product.name,
@@ -72,7 +77,7 @@ export default function ProductDetail() {
       });
       setAddedItem({
         name: product.name,
-        price: region === 'portugal' ? Number(product.price) * 0.20 : Number(product.price),
+        price: unit,
         image_url: product.image_url,
         quantity: parseInt(quantity),
       });
@@ -91,7 +96,7 @@ export default function ProductDetail() {
         fontSize: '16px',
         color: '#666'
       }}>
-        Carregando...
+        {t('product.loading')}
       </div>
     );
   }
@@ -108,16 +113,14 @@ export default function ProductDetail() {
         fontSize: '16px',
         color: '#666'
       }}>
-        Produto não encontrado
+        {t('product.notFound')}
       </div>
     );
   }
 
-  const price = Number(product.price) || 0;
-  const displayPrice = region === 'portugal'
-    ? (price * 0.20).toFixed(2)
-    : price.toFixed(2);
-  const currency = region === 'portugal' ? '€' : 'R$';
+  // Preco na moeda da regiao (euro usa price_eur; sem preco em euro = nao vendido la)
+  const currencyCode = currencyOfRegion(region);
+  const currency = currencyCode === 'EUR' ? '€' : 'R$';
 
   return (
     <div style={{ backgroundColor: '#fff', minHeight: '100vh', paddingTop: '80px', paddingBottom: '80px' }}>
@@ -136,7 +139,7 @@ export default function ProductDetail() {
             textDecoration: 'underline'
           }}
         >
-          ← VOLTAR
+          ← {t('product.back')}
         </button>
 
         {/* Main Grid */}
@@ -167,7 +170,7 @@ export default function ProductDetail() {
                 color: '#999',
                 marginBottom: '20px'
               }}>
-                Sem imagem
+                {t('wishlist.noImage')}
               </div>
             )}
 
@@ -238,7 +241,7 @@ export default function ProductDetail() {
                 fontWeight: '400',
                 color: '#000'
               }}>
-                {currency} {displayPrice}
+                {unit === null ? t('product.unavailableRegion') : money(unit, currencyCode)}
               </p>
               <WishlistButton productId={product.id} size="lg" />
             </div>
@@ -298,19 +301,19 @@ export default function ProductDetail() {
 
               {outOfStock && (
                 <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '13px', color: '#dc2626', fontWeight: '600', margin: '0 0 12px' }}>
-                  Produto esgotado no momento.
+                  {t('product.soldOutNow')}
                 </p>
               )}
               {stock !== null && stock > 0 && stock <= 5 && (
                 <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '13px', color: '#d97706', margin: '0 0 12px' }}>
-                  {stock === 1 ? 'Resta apenas 1 unidade.' : `Restam apenas ${stock} unidades.`}
+                  {stock === 1 ? t('product.lastUnit') : t('product.fewUnits', { n: stock })}
                 </p>
               )}
 
               {/* Add to Cart Button */}
               <button
                 onClick={handleAddToCart}
-                disabled={outOfStock}
+                disabled={outOfStock || unit === null}
                 style={{
                   fontFamily: 'Outfit, sans-serif',
                   fontSize: '14px',
@@ -328,7 +331,7 @@ export default function ProductDetail() {
                 onMouseEnter={(e) => { if (!outOfStock) e.target.style.background = '#333'; }}
                 onMouseLeave={(e) => { if (!outOfStock) e.target.style.background = '#000'; }}
               >
-                {outOfStock ? 'Esgotado' : 'Adicionar ao Carrinho'}
+                {outOfStock ? t('product.soldOut') : unit === null ? t('product.unavailableRegion') : t('product.add')}
               </button>
 
               {region === 'BR' && (
@@ -357,7 +360,7 @@ export default function ProductDetail() {
                     color: '#000'
                   }}
                 >
-                  <span>Description</span>
+                  <span>{t('product.description')}</span>
                   <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '16px' }}>
                     {expandedSection === 'description' ? '−' : '+'}
                   </span>
@@ -395,7 +398,7 @@ export default function ProductDetail() {
                       color: '#000'
                     }}
                   >
-                    <span>Dimensions</span>
+                    <span>{t('product.dimensions')}</span>
                     <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '16px' }}>
                       {expandedSection === 'dimensions' ? '−' : '+'}
                     </span>
@@ -409,10 +412,10 @@ export default function ProductDetail() {
                       fontFamily: 'Outfit, sans-serif',
                       fontSize: '14px'
                     }}>
-                      {product.weight > 0 && <p>Peso: {product.weight} kg</p>}
-                      {product.height > 0 && <p>Altura: {product.height} cm</p>}
-                      {product.width > 0 && <p>Largura: {product.width} cm</p>}
-                      {product.depth > 0 && <p>Profundidade: {product.depth} cm</p>}
+                      {product.weight > 0 && <p>{t('product.weight', { v: product.weight })}</p>}
+                      {product.height > 0 && <p>{t('product.height', { v: product.height })}</p>}
+                      {product.width > 0 && <p>{t('product.width', { v: product.width })}</p>}
+                      {product.depth > 0 && <p>{t('product.depth', { v: product.depth })}</p>}
                     </div>
                   )}
                 </div>
@@ -437,7 +440,7 @@ export default function ProductDetail() {
                     color: '#000'
                   }}
                 >
-                  <span>Shipping & Returns</span>
+                  <span>{t('product.shippingReturns')}</span>
                   <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '16px' }}>
                     {expandedSection === 'shipping' ? '−' : '+'}
                   </span>
@@ -450,7 +453,8 @@ export default function ProductDetail() {
                     color: '#333',
                     marginTop: '20px'
                   }}>
-                    Free shipping on orders over R$ 500 (or € 100). Returns accepted within 30 days of purchase.
+                    {t('product.shippingText')}{' '}
+                    <Link to="/legal/envio" style={{ color: '#000' }}>{t('product.shippingLinks')}</Link> · <Link to="/legal/trocas" style={{ color: '#000' }}>{t('product.returnsLink')}</Link>
                   </p>
                 )}
               </div>
@@ -464,7 +468,7 @@ export default function ProductDetail() {
                   marginTop: 0,
                   marginBottom: '24px'
                 }}>
-                  Avaliações dos Clientes
+                  {t('product.reviews')}
                 </h2>
 
                 {/* Review Stats */}

@@ -13,6 +13,7 @@ import AddressPicker from '../components/AddressPicker';
 import DocumentFields from '../components/DocumentFields';
 import { useCountries, emptyAddress } from '../utils/geo';
 import { ptError } from '../utils/errors';
+import { useI18n } from '../i18n';
 import '../components/Forms.css';
 import './Checkout.css';
 
@@ -27,6 +28,7 @@ const stripePromise = axios
 const TAX_RATE = { BR: 0.18, PT: 0.23, EU: 0.21 };
 
 function PaymentForm({ orderId, label, onBack, onPaid, setError }) {
+  const { t } = useI18n();
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -47,7 +49,7 @@ function PaymentForm({ orderId, label, onBack, onPaid, setError }) {
     });
 
     if (error) {
-      setError(error.message || 'O pagamento não foi concluído. Tente novamente.');
+      setError(error.message || t('checkout.paymentFailed'));
       setBusy(false);
       return;
     }
@@ -66,7 +68,7 @@ function PaymentForm({ orderId, label, onBack, onPaid, setError }) {
       return;
     }
 
-    setError('Seu pagamento está sendo processado. Você receberá um e-mail quando for confirmado.');
+    setError(t('checkout.paymentPending'));
     setBusy(false);
   };
 
@@ -75,10 +77,10 @@ function PaymentForm({ orderId, label, onBack, onPaid, setError }) {
       <PaymentElement />
       <div className="button-group" style={{ marginTop: '24px' }}>
         <button type="button" className="btn-secondary" onClick={onBack} disabled={busy}>
-          Voltar
+          {t('common.back')}
         </button>
         <button type="submit" className="btn-primary" disabled={!stripe || busy}>
-          {busy ? 'Processando…' : label}
+          {busy ? t('checkout.processing') : label}
         </button>
       </div>
     </form>
@@ -103,6 +105,7 @@ export default function Checkout() {
   const { appliedCoupon, removeCoupon } = useCouponStore();
   const { user, token, getAuthHeader, updateProfile, fetchUser } = useAuthStore();
   const countries = useCountries();
+  const { t, countryName, lang } = useI18n();
 
   const [step, setStep] = useState(1); // 1: Dados e endereco, 2: Frete, 3: Pagamento
   const [loading, setLoading] = useState(false);
@@ -130,7 +133,7 @@ export default function Checkout() {
   // Exige login
   useEffect(() => {
     if (!token) {
-      alert('Entre na sua conta para finalizar a compra.');
+      alert(t('checkout.loginRequired'));
       navigate('/login');
     }
   }, [token, navigate]);
@@ -186,17 +189,17 @@ export default function Checkout() {
   }, [addr.country, addr.postal_code]);
 
   const validateStep1 = () => {
-    if (!contact.email || !contact.name) return 'Preencha seu nome e e-mail.';
-    if (!addr.recipient_name || !addr.street || !addr.city || !addr.postal_code) return 'Preencha o endereço de entrega completo.';
-    if (addr.country === 'BR' && (!addr.number || !addr.district || !addr.state)) return 'Informe número, bairro e estado.';
-    if (!billingSame && (!billAddr.recipient_name || !billAddr.street || !billAddr.city || !billAddr.postal_code)) return 'Preencha o endereço de faturamento.';
+    if (!contact.email || !contact.name) return t('checkout.errContact');
+    if (!addr.recipient_name || !addr.street || !addr.city || !addr.postal_code) return t('checkout.errAddress');
+    if (addr.country === 'BR' && (!addr.number || !addr.district || !addr.state)) return t('checkout.errBR');
+    if (!billingSame && (!billAddr.recipient_name || !billAddr.street || !billAddr.city || !billAddr.postal_code)) return t('checkout.errBilling');
     const rules = countryInfo && countryInfo.documents ? countryInfo.documents : null;
     const docInfo = (countries.find((c) => c.code === billCountry) || {}).documents;
     const needsDoc = docInfo ? docInfo[fiscal.person_type === 'company' ? 'company' : 'individual'].required : rules === null;
-    if (needsDoc && !fiscal.document_number) return billCountry === 'BR' ? 'Informe o CPF ou CNPJ para a nota fiscal.' : 'Informe o número de IVA / VAT da empresa.';
-    if (fiscal.person_type === 'company' && !fiscal.company_name) return 'Informe a razão social da empresa.';
-    if (unavailableInCountry) return 'Algum produto do carrinho ainda não está à venda neste país. Escolha outro país ou revise o carrinho.';
-    if (!acceptTerms) return 'Para continuar, aceite os Termos de uso e a Política de privacidade.';
+    if (needsDoc && !fiscal.document_number) return billCountry === 'BR' ? t('checkout.errDocBR') : t('checkout.errDocVat');
+    if (fiscal.person_type === 'company' && !fiscal.company_name) return t('checkout.errCompany');
+    if (unavailableInCountry) return t('checkout.errNotAvailable');
+    if (!acceptTerms) return t('checkout.errTerms');
     return null;
   };
 
@@ -211,7 +214,7 @@ export default function Checkout() {
   // Cria o pedido (o servidor recalcula precos, frete e impostos) e a cobranca; so entao mostra o formulario do Stripe
   const startPayment = async () => {
     if (!shippingData.selectedMethod) {
-      setError('Escolha uma forma de envio.');
+      setError(t('checkout.chooseShipping'));
       return;
     }
     try {
@@ -231,8 +234,9 @@ export default function Checkout() {
         customerPersonType: fiscal.person_type,
         customerCompanyName: fiscal.company_name,
         customerDocumentNumber: fiscal.document_number,
+        language: lang,
         shippingMethodId: shippingData.selectedMethod,
-        couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+        couponCode: appliedCoupon && currency === 'BRL' ? appliedCoupon.code : undefined,
         paymentMethod: 'stripe',
       }, { headers: getAuthHeader() });
 
@@ -247,9 +251,9 @@ export default function Checkout() {
       const apiError = err.response?.data?.error || '';
       if (/coupon/i.test(apiError)) {
         removeCoupon();
-        setError('Seu cupom não é mais válido e foi removido. Revise o total e continue.');
+        setError(t('checkout.couponRemoved'));
       } else {
-        setError(ptError(err, 'Não foi possível iniciar o pagamento. Tente novamente.'));
+        setError(ptError(err, t('checkout.startFailed')));
       }
     } finally {
       setLoading(false);
@@ -287,8 +291,8 @@ export default function Checkout() {
     return (
       <div className="checkout-container">
         <div className="empty-cart">
-          <h2>Seu carrinho está vazio</h2>
-          <button className="btn-primary" onClick={() => navigate('/shop')}>Continuar comprando</button>
+          <h2>{t('checkout.emptyCart')}</h2>
+          <button className="btn-primary" onClick={() => navigate('/shop')}>{t('common.continueShopping')}</button>
         </div>
       </div>
     );
@@ -297,11 +301,11 @@ export default function Checkout() {
   return (
     <div className="checkout-container">
       <div className="checkout-header">
-        <h1>Finalizar compra</h1>
+        <h1>{t('checkout.title')}</h1>
         <div className="step-indicator">
-          <div className={`step ${step >= 1 ? 'active' : ''}`}>1. Dados e endereço</div>
-          <div className={`step ${step >= 2 ? 'active' : ''}`}>2. Envio</div>
-          <div className={`step ${step >= 3 ? 'active' : ''}`}>3. Pagamento</div>
+          <div className={`step ${step >= 1 ? 'active' : ''}`}>{t('checkout.step1')}</div>
+          <div className={`step ${step >= 2 ? 'active' : ''}`}>{t('checkout.step2')}</div>
+          <div className={`step ${step >= 3 ? 'active' : ''}`}>{t('checkout.step3')}</div>
         </div>
       </div>
 
@@ -311,23 +315,23 @@ export default function Checkout() {
 
           {step === 1 && (
             <div className="checkout-step">
-              <h2>Seus dados</h2>
+              <h2>{t('checkout.yourData')}</h2>
               <div className="fx-grid" style={{ marginBottom: 24 }}>
                 <div className="fx-field">
-                  <label htmlFor="ck-email">E-mail</label>
+                  <label htmlFor="ck-email">{t('checkout.email')}</label>
                   <input id="ck-email" type="email" value={contact.email} disabled={!!user} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" />
                 </div>
                 <div className="fx-field">
-                  <label htmlFor="ck-name">Nome completo</label>
+                  <label htmlFor="ck-name">{t('checkout.fullName')}</label>
                   <input id="ck-name" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" />
                 </div>
                 <div className="fx-field full">
-                  <label htmlFor="ck-phone">Telefone / WhatsApp</label>
+                  <label htmlFor="ck-phone">{t('checkout.phone')}</label>
                   <input id="ck-phone" type="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" placeholder="+55 11 99999-9999" />
                 </div>
               </div>
 
-              <h2>Endereço de entrega</h2>
+              <h2>{t('checkout.shippingAddress')}</h2>
               <AddressPicker
                 saved={savedShipping}
                 selectedId={shipId}
@@ -338,10 +342,10 @@ export default function Checkout() {
                 defaultCountry={defaultCountry}
               />
 
-              <h2 style={{ marginTop: 28 }}>Faturamento e nota fiscal</h2>
+              <h2 style={{ marginTop: 28 }}>{t('checkout.billingTitle')}</h2>
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '0 0 14px', fontSize: 14 }}>
                 <input type="checkbox" checked={billingSame} onChange={(e) => setBillingSame(e.target.checked)} />
-                O endereço de faturamento é o mesmo da entrega
+                {t('checkout.billingSame')}
               </label>
               {!billingSame && (
                 <div style={{ marginBottom: 18 }}>
@@ -366,22 +370,22 @@ export default function Checkout() {
 
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '20px 0 8px', fontSize: 14 }}>
                 <input type="checkbox" checked={saveForLater} onChange={(e) => setSaveForLater(e.target.checked)} />
-                Salvar estes dados na minha conta para as próximas compras
+                {t('checkout.saveForLater')}
               </label>
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '0 0 20px', fontSize: 14 }}>
                 <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} style={{ marginTop: 3 }} />
                 <span>
-                  Li e aceito os <Link to="/legal/termos" target="_blank">Termos de uso</Link>, a <Link to="/legal/privacidade" target="_blank">Política de privacidade</Link> e a <Link to="/legal/trocas" target="_blank">Política de trocas e devoluções</Link>.
+                  {t('checkout.acceptPrefix')}<Link to="/legal/termos" target="_blank">{t('checkout.terms')}</Link>{t('checkout.acceptAnd')}<Link to="/legal/privacidade" target="_blank">{t('checkout.privacy')}</Link>{t('checkout.acceptAnd2')}<Link to="/legal/trocas" target="_blank">{t('checkout.returns')}</Link>.
                 </span>
               </label>
 
-              <button className="btn-primary" onClick={goShipping}>Continuar para o envio</button>
+              <button className="btn-primary" onClick={goShipping}>{t('checkout.toShipping')}</button>
             </div>
           )}
 
           {step === 2 && (
             <div className="checkout-step">
-              <h2>Forma de envio</h2>
+              <h2>{t('checkout.shippingMethod')}</h2>
               <ShippingSelector
                 country={addr.country}
                 zipCode={addr.postal_code}
@@ -391,9 +395,9 @@ export default function Checkout() {
                 }}
               />
               <div className="button-group" style={{ marginTop: '24px' }}>
-                <button className="btn-secondary" onClick={() => setStep(1)}>Voltar</button>
+                <button className="btn-secondary" onClick={() => setStep(1)}>{t('common.back')}</button>
                 <button className="btn-primary" onClick={startPayment} disabled={!shippingData.selectedMethod || loading}>
-                  {loading ? 'Preparando pagamento…' : 'Continuar para o pagamento'}
+                  {loading ? t('checkout.preparing') : t('checkout.toPayment')}
                 </button>
               </div>
             </div>
@@ -401,11 +405,11 @@ export default function Checkout() {
 
           {step === 3 && payment && (
             <div className="checkout-step">
-              <h2>Pagamento</h2>
-              <Elements stripe={stripePromise} options={{ clientSecret: payment.clientSecret }}>
+              <h2>{t('checkout.payment')}</h2>
+              <Elements stripe={stripePromise} options={{ clientSecret: payment.clientSecret, locale: lang === 'pt' ? 'pt-BR' : lang }}>
                 <PaymentForm
                   orderId={payment.orderId}
-                  label={`Pagar ${money(symbol, finalTotal)}`}
+                  label={t('checkout.pay', { amount: money(symbol, finalTotal) })}
                   onBack={() => { setPayment(null); setStep(2); }}
                   onPaid={handlePaid}
                   setError={setError}
@@ -416,7 +420,7 @@ export default function Checkout() {
         </div>
 
         <div className="order-summary">
-          <h3>Resumo do pedido</h3>
+          <h3>{t('checkout.summary')}</h3>
           <div className="summary-items">
             {items.map((item) => (
               <div key={item.productId || item.id || item.product_id} className="summary-item">
@@ -426,20 +430,20 @@ export default function Checkout() {
             ))}
           </div>
           {unavailableInCountry && (
-            <p className="fx-hint" style={{ color: '#b91c1c' }}>Algum item ainda não tem preço para este país.</p>
+            <p className="fx-hint" style={{ color: '#b91c1c' }}>{t('checkout.noEurPrice')}</p>
           )}
 
           <div className="summary-line"></div>
-          <div className="summary-row"><span>Subtotal:</span><span>{money(symbol, subtotal)}</span></div>
+          <div className="summary-row"><span>{t('checkout.subtotal')}</span><span>{money(symbol, subtotal)}</span></div>
           {discount > 0 && (
-            <div className="summary-row"><span>Desconto ({appliedCoupon.code}):</span><span>-{money(symbol, discount)}</span></div>
+            <div className="summary-row"><span>{t('checkout.discount', { code: appliedCoupon.code })}</span><span>-{money(symbol, discount)}</span></div>
           )}
-          <div className="summary-row"><span>Impostos ({((TAX_RATE[destRegion] ?? TAX_RATE.BR) * 100).toFixed(0)}%):</span><span>{money(symbol, tax)}</span></div>
-          <div className="summary-row"><span>Envio:</span><span>{step >= 2 && shippingData.selectedMethod ? money(symbol, shipping) : 'a calcular'}</span></div>
+          <div className="summary-row"><span>{t('checkout.taxes', { rate: ((TAX_RATE[destRegion] ?? TAX_RATE.BR) * 100).toFixed(0) })}</span><span>{money(symbol, tax)}</span></div>
+          <div className="summary-row"><span>{t('checkout.shipping')}</span><span>{step >= 2 && shippingData.selectedMethod ? money(symbol, shipping) : t('checkout.toCalculate')}</span></div>
           <div className="summary-line"></div>
-          <div className="summary-total"><span>Total:</span><span>{money(symbol, finalTotal)}</span></div>
+          <div className="summary-total"><span>{t('checkout.total')}</span><span>{money(symbol, finalTotal)}</span></div>
           <div className="region-info">
-            <strong>{countryInfo ? countryInfo.name : 'Brasil'}</strong>
+            <strong>{countryName(countryInfo ? countryInfo.code : 'BR')}</strong>
             <span>{currency}</span>
           </div>
         </div>

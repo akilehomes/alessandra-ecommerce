@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCountries } from '../utils/geo';
 import { ptError } from '../utils/errors';
+import { useI18n } from '../i18n';
 import DocumentFields from './DocumentFields';
 import './Forms.css';
 
@@ -9,6 +10,7 @@ import './Forms.css';
 export default function AccountProfile() {
   const { user, updateProfile } = useAuthStore();
   const countries = useCountries();
+  const { t, countryName } = useI18n();
   const [form, setForm] = useState({
     name: user.name || '',
     phone: user.phone || '',
@@ -26,7 +28,7 @@ export default function AccountProfile() {
     setMsg(null);
     try {
       const result = await updateProfile({ ...form, document_type: undefined });
-      setMsg(result.success ? { ok: true, text: 'Dados salvos.' } : { ok: false, text: ptError(result.error) });
+      setMsg(result.success ? { ok: true, text: t('profile.saved') } : { ok: false, text: ptError(result.error) });
     } finally {
       setSaving(false);
     }
@@ -34,34 +36,34 @@ export default function AccountProfile() {
 
   return (
     <form onSubmit={save} className="profile-section" style={{ maxWidth: 620 }}>
-      <h2>Dados pessoais</h2>
+      <h2>{t('profile.title')}</h2>
       {msg && <div className={`fx-msg ${msg.ok ? 'ok' : 'err'}`}>{msg.text}</div>}
       <div className="fx-grid">
         <div className="fx-field full">
-          <label htmlFor="pf-email">E-mail</label>
+          <label htmlFor="pf-email">{t('profile.email')}</label>
           <input id="pf-email" value={user.email} disabled />
         </div>
         <div className="fx-field">
-          <label htmlFor="pf-name">Nome completo</label>
+          <label htmlFor="pf-name">{t('profile.name')}</label>
           <input id="pf-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" required />
         </div>
         <div className="fx-field">
-          <label htmlFor="pf-phone">Telefone</label>
+          <label htmlFor="pf-phone">{t('profile.phone')}</label>
           <input id="pf-phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} autoComplete="tel" placeholder="+55 11 99999-9999" />
         </div>
         <div className="fx-field full">
-          <label htmlFor="pf-country">País de residência / faturamento</label>
+          <label htmlFor="pf-country">{t('profile.country')}</label>
           <select id="pf-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value, document_number: '' })}>
-            {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+            {countries.map((c) => <option key={c.code} value={c.code}>{countryName(c.code)}</option>)}
           </select>
         </div>
       </div>
 
-      <h3 style={{ margin: '24px 0 12px', fontFamily: 'Outfit, sans-serif' }}>Dados fiscais</h3>
+      <h3 style={{ margin: '24px 0 12px', fontFamily: 'Outfit, sans-serif' }}>{t('profile.fiscal')}</h3>
       <DocumentFields country={form.country} value={form} onChange={(v) => setForm({ ...form, ...v })} idPrefix="pf" />
 
       <div className="fx-actions" style={{ marginTop: 20 }}>
-        <button type="submit" className="fx-btn" disabled={saving}>{saving ? 'Salvando…' : 'Salvar dados'}</button>
+        <button type="submit" className="fx-btn" disabled={saving}>{saving ? t('common.saving') : t('profile.save')}</button>
       </div>
     </form>
   );

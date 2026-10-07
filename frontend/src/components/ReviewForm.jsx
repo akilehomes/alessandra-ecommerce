@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useI18n } from '../i18n';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function ReviewForm({ productId, onReviewCreated, canReview = false, token }) {
+  const { t, formatDate } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState('');
@@ -16,12 +18,12 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
     setError('');
 
     if (!canReview) {
-      setError('Você precisa ter comprado este produto para avaliar.');
+      setError(t('rev.mustBuy'));
       return;
     }
 
     if (!title.trim()) {
-      setError('Título é obrigatório');
+      setError(t('rev.titleRequired'));
       return;
     }
 
@@ -44,9 +46,9 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
         onReviewCreated(response.data);
       }
 
-      alert('Avaliação criada com sucesso! Obrigado pela sua avaliação.');
+      alert(t('rev.created'));
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Erro ao criar avaliação';
+      const errorMessage = err.response?.data?.error || t('rev.createFail');
       setError(errorMessage);
       console.error('Erro:', err);
     } finally {
@@ -71,7 +73,7 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
           marginBottom: '24px'
         }}
       >
-        Deixar Avaliação
+        {t('rev.leave')}
       </button>
     );
   }
@@ -86,7 +88,7 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
       fontFamily: 'Outfit, sans-serif'
     }}>
       <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '18px', fontWeight: '600' }}>
-        Deixar Avaliação
+        {t('rev.leave')}
       </h3>
 
       {error && (
@@ -111,7 +113,7 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
           marginBottom: '16px',
           fontSize: '14px'
         }}>
-          Você precisa comprar este produto para deixar uma avaliação.
+          {t('rev.mustBuyLong')}
         </div>
       )}
 
@@ -119,7 +121,7 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
         {/* Rating */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
-            Avaliação (1-5 estrelas)
+            {t('rev.rating')}
           </label>
           <div style={{ display: 'flex', gap: '8px', fontSize: '28px' }}>
             {[1, 2, 3, 4, 5].map((star) => (
@@ -146,13 +148,13 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
         {/* Title */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
-            Título
+            {t('rev.titleLabel')}
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Exemplo: Produto excelente!"
+            placeholder={t('rev.titlePh')}
             maxLength={255}
             style={{
               width: '100%',
@@ -170,12 +172,12 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
         {/* Comment */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
-            Comentário (opcional)
+            {t('rev.comment')}
           </label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Compartilhe sua experiência com este produto..."
+            placeholder={t('rev.commentPh')}
             maxLength={5000}
             rows={5}
             style={{
@@ -216,7 +218,7 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
               }}
               disabled={loading}
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
           )}
           <button
@@ -235,7 +237,7 @@ export default function ReviewForm({ productId, onReviewCreated, canReview = fal
             }}
             disabled={loading || !canReview}
           >
-            {loading ? 'Enviando...' : 'Enviar Avaliação'}
+            {loading ? t('rev.sending') : t('rev.send')}
           </button>
         </div>
       </form>

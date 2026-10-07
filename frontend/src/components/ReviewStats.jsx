@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '../i18n';
 import axios from 'axios';
 import ReviewRating from './ReviewRating';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function ReviewStats({ productId }) {
+  const { t, formatDate } = useI18n();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export default function ReviewStats({ productId }) {
         color: '#999',
         fontSize: '14px'
       }}>
-        Nenhuma avaliação disponível
+        {t('rev.noneStats')}
       </div>
     );
   }
@@ -66,7 +68,7 @@ export default function ReviewStats({ productId }) {
       }}>
         <div>
           <h3 style={{ margin: 0, marginBottom: '8px', fontSize: '14px', color: '#999', fontWeight: '500' }}>
-            Avaliação Média
+            {t('rev.average')}
           </h3>
           <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
             {stats.average_rating?.toFixed(1) || 'N/A'}
@@ -76,7 +78,7 @@ export default function ReviewStats({ productId }) {
 
         <div>
           <h3 style={{ margin: 0, marginBottom: '8px', fontSize: '14px', color: '#999', fontWeight: '500' }}>
-            Total de Avaliações
+            {t('rev.total')}
           </h3>
           <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
             {stats.total_reviews}
@@ -87,7 +89,7 @@ export default function ReviewStats({ productId }) {
       {/* Distribution */}
       <div>
         <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600' }}>
-          Distribuição de Avaliações
+          {t('rev.distribution')}
         </h4>
         {[5, 4, 3, 2, 1].map((rating) => {
           const count = distribution[`${rating}_star`] || 0;

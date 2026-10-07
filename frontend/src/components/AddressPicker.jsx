@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { formatAddress, useCountries, emptyAddress } from '../utils/geo';
 import AddressForm from './AddressForm';
+import { useI18n } from '../i18n';
 import './Forms.css';
 
 // Escolhe um endereco salvo (cartoes) ou digita um novo.
 // saved: enderecos da conta do tipo certo; selectedId: id salvo ou 'new'; value: endereco em edicao
 export default function AddressPicker({ saved, selectedId, onSelect, value, onChange, idPrefix, showRecipient = true, showPhone = true, defaultCountry = 'BR' }) {
   const countries = useCountries();
+  const { t, countryName } = useI18n();
 
   // Ao trocar de cartao, o formulario passa a refletir o endereco escolhido
   const pick = (id) => {
@@ -32,15 +34,15 @@ export default function AddressPicker({ saved, selectedId, onSelect, value, onCh
             <label key={a.id} className={`fx-card ${selectedId === a.id ? 'selected' : ''}`} style={{ cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <input type="radio" name={`${idPrefix}-saved`} checked={selectedId === a.id} onChange={() => pick(a.id)} style={{ marginTop: 4 }} />
               <span style={{ fontSize: 14 }}>
-                <strong>{a.label || a.recipient_name}</strong>{a.is_default && <span className="fx-badge">Padrão</span>}
+                <strong>{a.label || a.recipient_name}</strong>{a.is_default && <span className="fx-badge">{t('common.default')}</span>}
                 <br />{a.recipient_name}<br />
-                <span style={{ color: '#4b5563' }}>{formatAddress(a, countries)}</span>
+                <span style={{ color: '#4b5563' }}>{formatAddress(a, countries, countryName)}</span>
               </span>
             </label>
           ))}
           <label className={`fx-card ${selectedId === 'new' ? 'selected' : ''}`} style={{ cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center' }}>
             <input type="radio" name={`${idPrefix}-saved`} checked={selectedId === 'new'} onChange={() => pick('new')} />
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Usar outro endereço</span>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>{t('addr.useOther')}</span>
           </label>
         </div>
       )}

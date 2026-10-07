@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useI18n } from '../i18n';
 import './Auth.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function ForgotPassword({ admin = false }) {
+  const { t, lang } = useI18n();
   const base = admin ? '/admin' : '/auth';
   const loginPath = admin ? '/admin/login' : '/login';
   const [email, setEmail] = useState('');
@@ -18,13 +20,13 @@ export default function ForgotPassword({ admin = false }) {
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_URL}${base}/forgot-password`, { email });
+      await axios.post(`${API_URL}${base}/forgot-password`, { email, language: lang });
       setSent(true);
     } catch (err) {
       setError(
         err.response?.status === 429
-          ? 'Muitas tentativas. Tente novamente em alguns minutos.'
-          : 'Não foi possível enviar agora. Verifique o e-mail e tente de novo.'
+          ? t('auth.forgotTooMany')
+          : t('auth.forgotFail')
       );
     } finally {
       setLoading(false);
@@ -34,25 +36,24 @@ export default function ForgotPassword({ admin = false }) {
   return (
     <div className="auth-container">
       <div className="auth-form">
-        <h1>Recuperar senha</h1>
+        <h1>{t('auth.forgotTitle')}</h1>
 
         {sent ? (
           <>
             <div className="success-message">
-              Se esse e-mail estiver cadastrado, enviamos um link para criar uma nova senha. Ele vale por 1 hora.
-              Confira também a caixa de spam.
+              {t('auth.forgotSent')}
             </div>
             <div className="auth-footer">
-              <p><Link to={loginPath}>Voltar para o login</Link></p>
+              <p><Link to={loginPath}>{t('auth.backToLogin')}</Link></p>
             </div>
           </>
         ) : (
           <>
-            <p className="auth-hint">Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.</p>
+            <p className="auth-hint">{t('auth.forgotHint')}</p>
             {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email">{t('auth.email')}</label>
                 <input
                   type="email"
                   id="email"
@@ -64,11 +65,11 @@ export default function ForgotPassword({ admin = false }) {
                 />
               </div>
               <button type="submit" disabled={loading} className="btn-primary">
-                {loading ? 'Enviando...' : 'Enviar link'}
+                {loading ? t('auth.sending') : t('auth.sendLink')}
               </button>
             </form>
             <div className="auth-footer">
-              <p><Link to={loginPath}>Voltar para o login</Link></p>
+              <p><Link to={loginPath}>{t('auth.backToLogin')}</Link></p>
             </div>
           </>
         )}

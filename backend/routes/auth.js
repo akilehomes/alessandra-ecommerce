@@ -129,7 +129,7 @@ const tooManyResets = (key) => {
 router.post('/forgot-password', async (req, res) => {
   const generic = { message: 'If this email is registered, you will receive instructions shortly.' };
   try {
-    const { email } = req.body;
+    const { email, language } = req.body;
     if (!email || !validateEmail(email)) {
       return res.status(400).json({ error: 'A valid email is required' });
     }
@@ -157,7 +157,7 @@ router.post('/forgot-password', async (req, res) => {
       if (process.env.LOG_RESET_LINKS === 'true') {
         console.log('[DEV] Link de redefinicao:', resetUrl); // somente dev
       }
-      await sendPasswordReset(user.email, user.name, resetUrl);
+      await sendPasswordReset(user.email, user.name, resetUrl, language);
     }
 
     res.json(generic);

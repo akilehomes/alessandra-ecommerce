@@ -29,7 +29,7 @@ const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex'
 router.post('/forgot-password', async (req, res) => {
   const generic = { message: 'If this email is registered, you will receive instructions shortly.' };
   try {
-    const { email } = req.body;
+    const { email, language } = req.body;
     if (!email || !validateEmail(email)) {
       return res.status(400).json({ error: 'A valid email is required' });
     }
@@ -50,7 +50,7 @@ router.post('/forgot-password', async (req, res) => {
       if (process.env.LOG_RESET_LINKS === 'true') {
         console.log('[DEV] Link de redefinicao (admin):', resetUrl); // somente dev
       }
-      await sendPasswordReset(admin.email, admin.full_name, resetUrl);
+      await sendPasswordReset(admin.email, admin.full_name, resetUrl, language);
     }
     res.json(generic);
   } catch (error) {

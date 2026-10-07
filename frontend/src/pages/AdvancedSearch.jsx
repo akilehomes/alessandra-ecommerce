@@ -1,9 +1,11 @@
+import { useI18n } from '../i18n';
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SearchFilters from '../components/SearchFilters';
 import SearchResults from '../components/SearchResults';
 
 export default function AdvancedSearch() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
@@ -31,7 +33,7 @@ export default function AdvancedSearch() {
             marginBottom: '8px',
             textTransform: 'uppercase'
           }}>
-            Busca Avançada
+            {t('search.title')}
           </h1>
           <p style={{
             fontFamily: 'Crimson Text, serif',
@@ -40,7 +42,7 @@ export default function AdvancedSearch() {
             fontWeight: '300',
             color: '#666'
           }}>
-            Encontre exatamente o que você procura
+            {t('search.sub')}
           </p>
         </div>
       </section>

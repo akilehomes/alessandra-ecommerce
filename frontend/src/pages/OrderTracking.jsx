@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useI18n } from '../i18n';
+import { COMPANY } from '../config/company';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-// A moeda do pedido vem na coluna region (BRL/EUR); sem ela, assume reais
-let currentSymbol = 'R$';
-const money = (value) => `${currentSymbol} ${(Number(value) || 0).toFixed(2)}`;
 
 // shipping_address pode vir como objeto (JSON) ou texto
 const formatAddress = (addr) => {
@@ -24,8 +23,10 @@ const formatAddress = (addr) => {
 export default function OrderTracking() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { t, money: formatMoney } = useI18n();
   const [order, setOrder] = useState(null);
-  currentSymbol = order && order.region === 'EUR' ? '€' : 'R$';
+  // A moeda do pedido vem na coluna region (BRL/EUR)
+  const money = (value) => formatMoney(value, order && order.region === 'EUR' ? 'EUR' : 'BRL');
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
@@ -36,6 +37,7 @@ export default function OrderTracking() {
       fetchOrder(orderId);
     } else {
       setShowForm(true);
+      setLoading(false);
     }
   }, [orderId]);
 
@@ -71,23 +73,24 @@ export default function OrderTracking() {
         const { id } = await response.json();
         navigate(`/track/${id}`);
       } else if (response.status === 429) {
-        alert('Muitas tentativas. Aguarde alguns minutos e tente de novo.');
+        alert(t('track.tooMany'));
       } else {
-        alert('Pedido não encontrado. Confira o número do pedido e o e-mail usado na compra.');
+        alert(t('track.notFound'));
       }
     } catch (error) {
       console.error('Error searching order:', error);
-      alert('Erro ao buscar pedido');
+      alert(t('track.error'));
     }
   };
 
   const getStatusInfo = (status) => {
     const statuses = {
-      pending: { label: 'Pendente', color: '#f59e0b', icon: '⏳' },
-      paid: { label: 'Pagamento Confirmado', color: '#10b981', icon: '✓' },
-      shipped: { label: 'Despachado', color: '#3b82f6', icon: '📦' },
-      delivered: { label: 'Entregue', color: '#10b981', icon: '✓' },
-      cancelled: { label: 'Cancelado', color: '#ef4444', icon: '✗' },
+      pending: { label: t('track.status.pending'), color: '#f59e0b', icon: '⏳' },
+      paid: { label: t('track.status.paid'), color: '#10b981', icon: '✓' },
+      shipped: { label: t('track.status.shipped'), color: '#3b82f6', icon: '📦' },
+      delivered: { label: t('track.status.delivered'), color: '#10b981', icon: '✓' },
+      cancelled: { label: t('track.status.cancelled'), color: '#ef4444', icon: '✗' },
+      refunded: { label: t('track.status.refunded'), color: '#6b7280', icon: '↩' },
     };
     return statuses[status] || { label: status, color: '#6b7280', icon: '?' };
   };
@@ -102,7 +105,7 @@ export default function OrderTracking() {
           <div className="animate-pulse mb-4">
             <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto"></div>
           </div>
-          <p className="text-gray-600">Carregando pedido...</p>
+          <p className="text-gray-600">{t('track.loading')}</p>
         </div>
       </div>
     );
@@ -113,14 +116,14 @@ export default function OrderTracking() {
       <div className="min-h-screen flex items-center justify-center bg-white px-4">
         <div className="max-w-md w-full">
           <div className="mb-12 text-center">
-            <h1 className="text-4xl font-bold tracking-tighter mb-4 uppercase">Rastrear</h1>
-            <p className="text-gray-600 text-sm">Acompanhe seu pedido em tempo real</p>
+            <h1 className="text-4xl font-bold tracking-tighter mb-4 uppercase">{t('track.title')}</h1>
+            <p className="text-gray-600 text-sm">{t('track.sub')}</p>
           </div>
 
           <form onSubmit={handleSearch} className="space-y-6">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-700">
-                Número do Pedido
+                {t('track.number')}
               </label>
               <input
                 type="text"
@@ -134,13 +137,13 @@ export default function OrderTracking() {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-gray-700">
-                Seu Email
+                {t('track.email')}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemplo@email.com"
+                placeholder={t('track.emailPh')}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-black"
               />
@@ -150,12 +153,12 @@ export default function OrderTracking() {
               type="submit"
               className="w-full bg-black text-white py-3 text-xs font-bold uppercase tracking-wider hover:bg-gray-900 transition-colors"
             >
-              Buscar Pedido
+              {t('track.search')}
             </button>
           </form>
 
           <div className="mt-8 p-4 bg-gray-50 rounded-none border border-gray-200 text-center text-xs text-gray-600">
-            <p>Você recebeu um email de confirmação com um link para rastrear seu pedido.</p>
+            <p>{t('track.hint')}</p>
           </div>
         </div>
       </div>
@@ -171,7 +174,7 @@ export default function OrderTracking() {
             onClick={() => setShowForm(true)}
             className="text-sm font-bold uppercase tracking-wider text-black hover:underline"
           >
-            Buscar outro pedido
+            {t('track.searchOther')}
           </button>
         </div>
       </div>
@@ -189,10 +192,10 @@ export default function OrderTracking() {
             onClick={() => navigate('/')}
             className="text-xs font-bold uppercase tracking-wider text-gray-600 hover:text-black mb-8"
           >
-            ← Voltar
+            {t('track.back')}
           </button>
-          <h1 className="text-4xl font-bold tracking-tighter uppercase mb-2">Rastreamento</h1>
-          <p className="text-gray-600 text-sm">Pedido #{order.id}</p>
+          <h1 className="text-4xl font-bold tracking-tighter uppercase mb-2">{t('track.heading')}</h1>
+          <p className="text-gray-600 text-sm">{t('track.orderNo', { n: order.order_number || order.id })}</p>
         </div>
       </div>
 
@@ -208,7 +211,7 @@ export default function OrderTracking() {
               {statusInfo.icon}
             </div>
             <div>
-              <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Status Atual</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">{t('track.current')}</p>
               <p className="text-2xl font-bold uppercase tracking-tight" style={{ color: statusInfo.color }}>
                 {statusInfo.label}
               </p>
@@ -218,7 +221,7 @@ export default function OrderTracking() {
 
         {/* Timeline */}
         <div className="mb-12">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-8">Histórico do Pedido</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-8">{t('track.history')}</h2>
           <div className="space-y-6">
             {statusSteps.map((step, index) => {
               const isActive = index <= currentStepIndex;
@@ -255,7 +258,7 @@ export default function OrderTracking() {
                       {stepInfo.label}
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
-                      {isCurrent ? 'Seu pedido está nesta etapa' : isActive ? 'Concluído' : 'Pendente'}
+                      {isCurrent ? t('track.stepNow') : isActive ? t('track.stepDone') : t('track.stepPending')}
                     </p>
                   </div>
                 </div>
@@ -268,13 +271,13 @@ export default function OrderTracking() {
         <div className="space-y-8">
           {/* Items */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-4">Itens do Pedido</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-4">{t('track.items')}</h3>
             <div className="space-y-3">
               {order.items && order.items.map((item, index) => (
                 <div key={index} className="flex justify-between items-start pb-3 border-b border-gray-200 last:border-b-0">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{item.name || item.product_name}</p>
-                    <p className="text-xs text-gray-600">Quantidade: {item.quantity}</p>
+                    <p className="text-xs text-gray-600">{t('track.quantity', { n: item.quantity })}</p>
                   </div>
                   <p className="text-sm font-medium text-gray-900">{money(Number(item.price) * Number(item.quantity))}</p>
                 </div>
@@ -284,22 +287,22 @@ export default function OrderTracking() {
 
           {/* Summary */}
           <div className="bg-gray-50 p-6 rounded-none border border-gray-200">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-4">Resumo</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-4">{t('track.summary')}</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
+                <span>{t('track.subtotal')}</span>
                 <span>{money(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Frete</span>
+                <span>{t('track.shipping')}</span>
                 <span>{money(order.shipping_cost)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Impostos</span>
+                <span>{t('track.taxes')}</span>
                 <span>{money(order.tax)}</span>
               </div>
               <div className="flex justify-between font-bold text-gray-900 pt-3 border-t border-gray-200 text-base">
-                <span>Total</span>
+                <span>{t('track.total')}</span>
                 <span>{money(order.total)}</span>
               </div>
             </div>
@@ -308,10 +311,10 @@ export default function OrderTracking() {
           {/* Carrier tracking */}
           {order.shipping && order.shipping.tracking_number && (
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">Rastreio da transportadora</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">{t('track.carrierTitle')}</h3>
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-none text-sm text-gray-700">
-                {order.shipping.carrier && <p className="mb-1">Transportadora: <strong>{order.shipping.carrier}</strong></p>}
-                <p>Código: <span style={{ fontFamily: 'monospace', fontSize: '15px' }}>{order.shipping.tracking_number}</span></p>
+                {order.shipping.carrier && <p className="mb-1">{t('track.carrier')} <strong>{order.shipping.carrier}</strong></p>}
+                <p>{t('track.code')} <span style={{ fontFamily: 'monospace', fontSize: '15px' }}>{order.shipping.tracking_number}</span></p>
               </div>
             </div>
           )}
@@ -319,32 +322,39 @@ export default function OrderTracking() {
           {/* Shipping Address */}
           {order.shipping_address && (
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">Endereço de Entrega</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">{t('track.address')}</h3>
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-none text-sm text-gray-700 whitespace-pre-wrap">
                 {formatAddress(order.shipping_address)}
               </div>
             </div>
           )}
 
-          {/* Estimated Delivery */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-none text-sm text-blue-900">
-            <p className="font-bold mb-1">📦 Entrega Prevista</p>
-            <p>5-7 dias úteis a partir do despacho</p>
-          </div>
+          {/* Envio contratado (dados reais do pedido) */}
+          {order.shipping_carrier && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-none text-sm text-blue-900">
+              <p className="font-bold mb-1">📦 {t('track.delivery')}</p>
+              <p>
+                {[order.shipping_carrier, order.shipping_service].filter(Boolean).filter((v, i, arr) => arr.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i).join(' ')}
+                {order.shipping_days ? ` · ${t('track.deliveryDays', { n: order.shipping_days })}` : ''}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Contact Support */}
-        <div className="mt-12 p-6 bg-gray-50 border border-gray-200 rounded-none text-center">
-          <p className="text-xs text-gray-600 mb-3">Dúvidas sobre seu pedido?</p>
-          <a
-            href="https://wa.me/5511999999999"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block text-xs font-bold uppercase tracking-wider text-black hover:underline"
-          >
-            Contacte-nos via WhatsApp
-          </a>
-        </div>
+        {/* Contato: so aparece se houver e-mail/WhatsApp configurado em config/company.js */}
+        {(COMPANY.email || COMPANY.phone) && (
+          <div className="mt-12 p-6 bg-gray-50 border border-gray-200 rounded-none text-center">
+            <p className="text-xs text-gray-600 mb-3">{t('track.help')}</p>
+            <a
+              href={COMPANY.email ? `mailto:${COMPANY.email}` : `https://wa.me/${String(COMPANY.phone).replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs font-bold uppercase tracking-wider text-black hover:underline"
+            >
+              {t('track.contact')}
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );

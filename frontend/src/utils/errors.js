@@ -1,35 +1,46 @@
-// Mensagens do servidor (em ingles) -> portugues para o cliente
+import { tNow } from '../i18n';
+
+// Mensagens do servidor (em ingles) -> chave de texto traduzida
 const RULES = [
-  [/CPF is required/i, 'Informe o CPF.'],
-  [/Invalid CPF/i, 'CPF inválido. Confira os números.'],
-  [/Invalid CNPJ/i, 'CNPJ inválido. Confira os números.'],
-  [/CNPJ is required/i, 'Informe o CNPJ.'],
-  [/Invalid NIF/i, 'NIF inválido. Confira os números.'],
-  [/IVA \/ VAT is required|VAT.*required/i, 'Informe o número de IVA / VAT da empresa.'],
-  [/Invalid Número de IVA|Invalid .*VAT/i, 'Número de IVA / VAT inválido. Exemplo: PT123456789.'],
-  [/Invalid Número de contribuinte/i, 'Número de contribuinte inválido.'],
-  [/Company name is required/i, 'Informe a razão social da empresa.'],
-  [/Invalid CEP/i, 'CEP inválido.'],
-  [/Invalid postal code/i, 'Código postal inválido para este país.'],
-  [/Invalid state/i, 'Selecione o estado.'],
-  [/District is required/i, 'Informe o bairro.'],
-  [/Number is required/i, 'Informe o número.'],
-  [/Recipient name is required/i, 'Informe o nome de quem recebe.'],
-  [/Street, city and postal code are required/i, 'Preencha rua, cidade e CEP / código postal.'],
-  [/Country is not supported/i, 'Ainda não entregamos neste país.'],
-  [/up to \d+ addresses/i, 'Você já tem o máximo de endereços salvos. Remova algum para adicionar outro.'],
-  [/Name is required/i, 'Informe o nome.'],
-  [/not available for sale in this country/i, 'Algum produto do carrinho ainda não está à venda neste país.'],
-  [/Shipping to this country is not available/i, 'Ainda não calculamos frete para este país. Fale conosco para um orçamento.'],
-  [/out of stock/i, 'Um dos produtos acabou de esgotar.'],
-  [/available$/i, 'A quantidade pedida passa do estoque disponível.'],
-  [/special shipping/i, 'Este pedido precisa de frete especial. Solicite um orçamento.'],
-  [/shipping option is not available/i, 'A opção de frete escolhida não está mais disponível. Escolha novamente.'],
+  [/CPF is required/i, 'err.cpfRequired'],
+  [/Invalid CPF/i, 'err.cpfInvalid'],
+  [/Invalid CNPJ/i, 'err.cnpjInvalid'],
+  [/CNPJ is required/i, 'err.cnpjRequired'],
+  [/Invalid NIF/i, 'err.nifInvalid'],
+  [/IVA \/ VAT is required|VAT.*required/i, 'err.vatRequired'],
+  [/Invalid Número de IVA|Invalid .*VAT/i, 'err.vatInvalid'],
+  [/Invalid Número de contribuinte/i, 'err.taxIdInvalid'],
+  [/Company name is required/i, 'err.companyRequired'],
+  [/Invalid CEP/i, 'err.cepInvalid'],
+  [/Invalid postal code/i, 'err.postalInvalid'],
+  [/Invalid state/i, 'err.stateInvalid'],
+  [/District is required/i, 'err.districtRequired'],
+  [/Number is required/i, 'err.numberRequired'],
+  [/Recipient name is required/i, 'err.recipientRequired'],
+  [/Street, city and postal code are required/i, 'err.addressIncomplete'],
+  [/Country is not supported/i, 'err.countryUnsupported'],
+  [/up to \d+ addresses/i, 'err.maxAddresses'],
+  [/Name is required/i, 'err.nameRequired'],
+  [/not available for sale in this country/i, 'err.notAvailableCountry'],
+  [/Shipping to this country is not available/i, 'err.shippingUnavailable'],
+  [/out of stock/i, 'err.outOfStock'],
+  [/available$/i, 'err.overStock'],
+  [/special shipping/i, 'err.specialShipping'],
+  [/shipping option is not available/i, 'err.shippingOptionGone'],
+  [/Invalid credentials/i, 'autherr.invalidCredentials'],
+  [/already registered/i, 'autherr.emailTaken'],
+  [/Too many/i, 'autherr.tooMany'],
+  [/Invalid email/i, 'autherr.invalidEmail'],
+  [/at least 6 characters/i, 'autherr.passwordShort'],
+  [/Session expired/i, 'autherr.session'],
+  [/locked/i, 'autherr.locked'],
 ];
 
-export function ptError(error, fallback = 'Algo deu errado. Tente novamente.') {
+// Aceita um erro do axios ou um texto; devolve a mensagem no idioma atual
+export function ptError(error, fallback) {
   const raw = (error && error.response && error.response.data && error.response.data.error) || (typeof error === 'string' ? error : '');
-  if (!raw) return fallback;
-  const rule = RULES.find(([re]) => re.test(raw));
-  return rule ? rule[1] : raw;
+  const rule = raw ? RULES.find(([re]) => re.test(raw)) : null;
+  if (rule) return tNow(rule[1]);
+  return raw || fallback || tNow('common.tryAgain');
 }
+export { ptError as translateError };

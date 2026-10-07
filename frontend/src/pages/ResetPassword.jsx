@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import PasswordInput from '../components/PasswordInput';
+import { useI18n } from '../i18n';
 import './Auth.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function ResetPassword({ admin = false }) {
+  const { t } = useI18n();
   const base = admin ? '/admin' : '/auth';
   const loginPath = admin ? '/admin/login' : '/login';
   const forgotPath = admin ? '/admin/forgot-password' : '/forgot-password';
@@ -24,11 +26,11 @@ export default function ResetPassword({ admin = false }) {
     setError(null);
 
     if (password.length < minLen) {
-      setError(`A senha deve ter pelo menos ${minLen} caracteres.`);
+      setError(t('auth.passwordMin', { n: minLen }));
       return;
     }
     if (password !== confirm) {
-      setError('As senhas não conferem.');
+      setError(t('auth.passwordsMismatch'));
       return;
     }
 
@@ -39,8 +41,8 @@ export default function ResetPassword({ admin = false }) {
     } catch (err) {
       setError(
         err.response?.status === 400
-          ? 'Este link é inválido ou já expirou. Peça um novo.'
-          : 'Não foi possível redefinir a senha agora. Tente novamente.'
+          ? t('auth.resetExpired')
+          : t('auth.resetFail')
       );
     } finally {
       setLoading(false);
@@ -51,10 +53,10 @@ export default function ResetPassword({ admin = false }) {
     return (
       <div className="auth-container">
         <div className="auth-form">
-          <h1>Nova senha</h1>
-          <div className="error-message">Link inválido.</div>
+          <h1>{t('auth.resetTitle')}</h1>
+          <div className="error-message">{t('auth.resetInvalidLink')}</div>
           <div className="auth-footer">
-            <p><Link to={forgotPath}>Pedir um novo link</Link></p>
+            <p><Link to={forgotPath}>{t('auth.requestNewLink')}</Link></p>
           </div>
         </div>
       </div>
@@ -64,13 +66,13 @@ export default function ResetPassword({ admin = false }) {
   return (
     <div className="auth-container">
       <div className="auth-form">
-        <h1>Nova senha</h1>
+        <h1>{t('auth.resetTitle')}</h1>
 
         {done ? (
           <>
-            <div className="success-message">Senha atualizada com sucesso.</div>
+            <div className="success-message">{t('auth.resetDone')}</div>
             <Link to={loginPath} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-              Entrar
+              {t('auth.loginTitle')}
             </Link>
           </>
         ) : (
@@ -78,7 +80,7 @@ export default function ResetPassword({ admin = false }) {
             {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="password">Nova senha</label>
+                <label htmlFor="password">{t('auth.newPassword')}</label>
                 <PasswordInput
                   id="password"
                   name="password"
@@ -89,7 +91,7 @@ export default function ResetPassword({ admin = false }) {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="confirm">Confirmar senha</label>
+                <label htmlFor="confirm">{t('auth.confirmPassword')}</label>
                 <PasswordInput
                   id="confirm"
                   name="confirm"
@@ -100,7 +102,7 @@ export default function ResetPassword({ admin = false }) {
                 />
               </div>
               <button type="submit" disabled={loading} className="btn-primary">
-                {loading ? 'Salvando...' : 'Salvar nova senha'}
+                {loading ? t('common.saving') : t('auth.saveNewPassword')}
               </button>
             </form>
           </>

@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import { useI18n } from '../i18n';
 import './AddedToCartModal.css';
 
 // Janela exibida depois de adicionar um produto ao carrinho
 export default function AddedToCartModal({ item, symbol = 'R$', onContinue, onGoToCart }) {
+  const { t, money } = useI18n();
   const primaryRef = useRef(null);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function AddedToCartModal({ item, symbol = 'R$', onContinue, onGo
 
         <p className="atc-eyebrow">
           <span className="atc-check" aria-hidden="true">✓</span>
-          <span id="atc-title">Adicionado ao carrinho</span>
+          <span id="atc-title">{t('product.addedTitle')}</span>
         </p>
 
         <div className="atc-item">
@@ -47,18 +49,18 @@ export default function AddedToCartModal({ item, symbol = 'R$', onContinue, onGo
           <div className="atc-info">
             <p className="atc-name">{item.name}</p>
             <p className="atc-meta">
-              Quantidade: {item.quantity}
-              {unitPrice > 0 && <> · {symbol} {(unitPrice * item.quantity).toFixed(2)}</>}
+              {t('product.qty')}: {item.quantity}
+              {unitPrice > 0 && <> · {money(unitPrice * item.quantity, symbol === '€' ? 'EUR' : 'BRL')}</>}
             </p>
           </div>
         </div>
 
         <div className="atc-actions">
           <button type="button" className="atc-btn atc-btn-primary" ref={primaryRef} onClick={onGoToCart}>
-            Ir para o carrinho
+            {t('product.goToCart')}
           </button>
           <button type="button" className="atc-btn atc-btn-secondary" onClick={onContinue}>
-            Continuar comprando
+            {t('product.keepShopping')}
           </button>
         </div>
       </div>

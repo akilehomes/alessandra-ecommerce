@@ -4,6 +4,7 @@ import { useCartStore } from '../store/cartStore';
 import { useRegionStore } from '../store/regionStore';
 import { useAuthStore } from '../store/authStore';
 import { useWishlistStore } from '../store/wishlistStore';
+import { useI18n, LANGUAGES, useLanguageStore } from '../i18n';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ export default function Navbar() {
   const wishlistCount = useWishlistStore((state) => state.items.length);
   const { region, setRegion } = useRegionStore();
   const { user, logout } = useAuthStore();
+  const { t } = useI18n();
+  const lang = useLanguageStore((s) => s.lang);
+  const setLang = useLanguageStore((s) => s.setLang);
 
   const handleLogout = () => {
     logout();
@@ -24,10 +28,10 @@ export default function Navbar() {
       <div className="max-w-full px-6 h-full flex items-center justify-center relative">
         {/* Left Navigation */}
         <div className="absolute left-6 flex gap-8 text-sm font-medium">
-          <Link to="/" className="hover:opacity-60 transition">Home</Link>
-          <Link to="/shop" className="hover:opacity-60 transition font-bold">Shop</Link>
-          <Link to="/projects" className="hover:opacity-60 transition">Projects</Link>
-          <Link to="/about" className="hover:opacity-60 transition">About</Link>
+          <Link to="/" className="hover:opacity-60 transition">{t('nav.home')}</Link>
+          <Link to="/shop" className="hover:opacity-60 transition font-bold">{t('nav.shop')}</Link>
+          <Link to="/projects" className="hover:opacity-60 transition">{t('nav.projects')}</Link>
+          <Link to="/about" className="hover:opacity-60 transition">{t('nav.about')}</Link>
         </div>
 
         {/* Center Logo */}
@@ -37,15 +41,26 @@ export default function Navbar() {
 
         {/* Right Section */}
         <div className="absolute right-6 flex gap-6 items-center">
+          {/* Idioma */}
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value)}
+            aria-label={t('nav.language')}
+            style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', padding: '4px 8px', border: '1px solid #000', background: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
+          >
+            {Object.entries(LANGUAGES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+          </select>
+
           {/* Region Selector */}
           <select
+            aria-label={t('nav.region')}
             value={region}
             onChange={(e) => setRegion(e.target.value)}
             style={{fontFamily: 'Outfit, sans-serif', fontSize: '11px', padding: '4px 8px', border: '1px solid #000', background: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
           >
-            <option value="BR">🇧🇷 Brasil (BRL)</option>
-            <option value="PT">🇵🇹 Portugal (EUR)</option>
-            <option value="EU">🇪🇺 Europa (EUR)</option>
+            <option value="BR">{t('region.BR')}</option>
+            <option value="PT">{t('region.PT')}</option>
+            <option value="EU">{t('region.EU')}</option>
           </select>
 
           {/* Auth Links */}
@@ -59,16 +74,16 @@ export default function Navbar() {
                   onClick={handleLogout}
                   className="hover:opacity-60 transition text-red-500 font-medium"
                 >
-                  Sair
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
                 <Link to="/login" className="hover:opacity-60 transition">
-                  Entrar
+                  {t('nav.login')}
                 </Link>
                 <Link to="/register" className="hover:opacity-60 transition font-bold">
-                  Registrar
+                  {t('nav.register')}
                 </Link>
               </>
             )}

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useI18n } from '../i18n';
+import { ptError } from '../utils/errors';
 import PasswordInput from '../components/PasswordInput';
 import './Auth.css';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { login, isLoading, error } = useAuthStore();
   const [formData, setFormData] = useState({ email: '', password: '' });
 
@@ -24,12 +27,12 @@ export default function Login() {
   return (
     <div className="auth-container">
       <div className="auth-form">
-        <h1>Entrar</h1>
-        {error && <div className="error-message">{error}</div>}
+        <h1>{t('auth.loginTitle')}</h1>
+        {error && <div className="error-message">{ptError(error)}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t('auth.email')}</label>
             <input
               type="email"
               id="email"
@@ -41,7 +44,7 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Senha</label>
+            <label htmlFor="password">{t('auth.password')}</label>
             <PasswordInput
               id="password"
               name="password"
@@ -49,16 +52,16 @@ export default function Login() {
               onChange={handleChange}
               autoComplete="current-password"
             />
-            <Link to="/forgot-password" className="forgot-link">Esqueci minha senha</Link>
+            <Link to="/forgot-password" className="forgot-link">{t('auth.forgot')}</Link>
           </div>
 
           <button type="submit" disabled={isLoading} className="btn-primary">
-            {isLoading ? 'Entrando...' : 'Entrar'}
+            {isLoading ? t('auth.loggingIn') : t('auth.loginTitle')}
           </button>
         </form>
 
         <div className="auth-footer">
-          <p>Não tem conta? <Link to="/register">Criar conta</Link></p>
+          <p>{t('auth.noAccount')} <Link to="/register">{t('auth.createAccount')}</Link></p>
         </div>
       </div>
     </div>

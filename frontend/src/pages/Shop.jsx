@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useRegionStore } from '../store/regionStore';
 import WishlistButton from '../components/WishlistButton';
+import { useI18n } from '../i18n';
+import { currencyOfRegion, unitPriceFor } from '../utils/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -17,6 +19,7 @@ export default function Shop() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState(5);
   const navigate = useNavigate();
+  const { t, money } = useI18n();
   const { region } = useRegionStore();
   const regionConfig = REGION_CONFIG[region];
 
@@ -50,10 +53,10 @@ export default function Shop() {
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto text-center">
           <h1 style={{fontFamily: 'Outfit, sans-serif', fontSize: '32px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px', textTransform: 'uppercase'}}>
-            Products
+            {t('shop.title')}
           </h1>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic', fontWeight: '300', color: '#666'}}>
-            {products.length} {products.length === 1 ? 'article' : 'articles'}
+            {products.length === 1 ? t('shop.count.one', { n: 1 }) : t('shop.count.other', { n: products.length })}
           </p>
         </div>
       </section>
@@ -66,7 +69,7 @@ export default function Shop() {
               onClick={() => setViewMode(2)}
               style={{background: 'none', border: 'none', cursor: 'pointer', opacity: viewMode === 2 ? 1 : 0.5, fontWeight: viewMode === 2 ? 700 : 400}}
             >
-              View 2
+              {t('shop.view')} 2
             </button>
             <span style={{margin: '0 8px', opacity: 0.5}}>|</span>
             <button
@@ -84,7 +87,7 @@ export default function Shop() {
             </button>
           </div>
           <div style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', letterSpacing: '0.5px', cursor: 'pointer'}}>
-            Filters
+            <Link to="/search">{t('shop.advancedSearch')}</Link>
           </div>
         </div>
       </section>
@@ -93,7 +96,7 @@ export default function Shop() {
       <section className="py-12 px-6">
         {loading ? (
           <div style={{textAlign: 'center', padding: '64px 0', fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic'}}>
-            Carregando produtos...
+            {t('shop.loading')}
           </div>
         ) : (
           <div className="max-w-7xl mx-auto">
@@ -114,7 +117,7 @@ export default function Shop() {
                     />
                     {product.stock_quantity != null && product.stock_quantity <= 0 && (
                       <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#000', color: '#fff', fontFamily: 'Outfit, sans-serif', fontSize: '9px', fontWeight: '700', letterSpacing: '1px', padding: '3px 8px', textTransform: 'uppercase' }}>
-                        Esgotado
+                        {t('shop.soldOut')}
                       </div>
                     )}
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -126,7 +129,7 @@ export default function Shop() {
                       {product.name}
                     </h3>
                     <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '9px', fontWeight: '400', letterSpacing: '0.5px', color: '#666'}}>
-                      {regionConfig.symbol} {Number(product.price).toFixed(2)}
+                      {unitPriceFor(product, currencyOfRegion(region)) === null ? t('product.unavailableRegion') : money(unitPriceFor(product, currencyOfRegion(region)), currencyOfRegion(region))}
                     </p>
                   </div>
                 </div>

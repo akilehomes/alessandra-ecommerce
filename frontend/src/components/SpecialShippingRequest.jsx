@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useI18n } from '../i18n';
 import './ShippingCalculator.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -15,6 +16,7 @@ const savedUser = () => {
 // Formulario "pedir orcamento de frete" para itens que as transportadoras automaticas nao atendem
 //   items: [{ productId, quantity, name }]   specialProducts: ids dos itens sem frete automatico
 export default function SpecialShippingRequest({ items, specialProducts = [], cep }) {
+  const { t } = useI18n();
   const user = savedUser();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -56,8 +58,8 @@ export default function SpecialShippingRequest({ items, specialProducts = [], ce
     } catch (err) {
       setError(
         err.response?.status === 429
-          ? 'Você já enviou alguns pedidos. Aguarde um pouco e tente de novo.'
-          : 'Não foi possível enviar agora. Confira os dados e tente novamente.'
+          ? t('quote.tooMany')
+          : t('quote.fail')
       );
     } finally {
       setSending(false);
@@ -67,7 +69,7 @@ export default function SpecialShippingRequest({ items, specialProducts = [], ce
   if (done) {
     return (
       <p className="psc-success" role="status">
-        Recebemos seu pedido! Vamos responder por e-mail com o valor do frete.
+        {t('quote.sent')}
       </p>
     );
   }
@@ -75,7 +77,7 @@ export default function SpecialShippingRequest({ items, specialProducts = [], ce
   if (!open) {
     return (
       <button type="button" className="psc-button psc-button--wide" onClick={() => setOpen(true)}>
-        Pedir orçamento de frete
+        {t('quote.ask')}
       </button>
     );
   }
@@ -83,24 +85,24 @@ export default function SpecialShippingRequest({ items, specialProducts = [], ce
   return (
     <form className="psc-quote" onSubmit={handleSubmit}>
       <label className="psc-field">
-        <span>Nome</span>
+        <span>{t('quote.name')}</span>
         <input className="psc-input" value={form.name} onChange={set('name')} required minLength={2} maxLength={120} autoComplete="name" />
       </label>
       <label className="psc-field">
-        <span>E-mail</span>
+        <span>{t('quote.email')}</span>
         <input className="psc-input" type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
       </label>
       <label className="psc-field">
-        <span>Telefone / WhatsApp (opcional)</span>
+        <span>{t('quote.phone')}</span>
         <input className="psc-input" type="tel" value={form.phone} onChange={set('phone')} maxLength={30} autoComplete="tel" />
       </label>
       <label className="psc-field">
-        <span>Observação (opcional)</span>
+        <span>{t('quote.message')}</span>
         <textarea className="psc-input psc-textarea" value={form.message} onChange={set('message')} maxLength={600} rows={3} />
       </label>
       {error && <p className="psc-error">{error}</p>}
       <button type="submit" className="psc-button psc-button--wide" disabled={sending}>
-        {sending ? 'Enviando…' : 'Enviar pedido de orçamento'}
+        {sending ? t('quote.sending') : t('quote.send')}
       </button>
     </form>
   );

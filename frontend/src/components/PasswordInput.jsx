@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useI18n } from '../i18n';
 
 // Campo de senha com botao Mostrar/Ocultar
 export default function PasswordInput({ id, name, value, onChange, autoComplete, minLength, required = true }) {
   const [visible, setVisible] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div className="password-field">
@@ -20,10 +22,10 @@ export default function PasswordInput({ id, name, value, onChange, autoComplete,
         type="button"
         className="password-toggle"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        aria-label={visible ? t('common.hidePassword') : t('common.showPassword')}
         aria-pressed={visible}
       >
-        {visible ? 'Ocultar' : 'Mostrar'}
+        {visible ? t('common.hide') : t('common.show')}
       </button>
     </div>
   );

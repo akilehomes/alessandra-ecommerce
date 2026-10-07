@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '../i18n';
 import axios from 'axios';
 import ReviewRating from './ReviewRating';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function ReviewsList({ productId, token, refresh = 0 }) {
+  const { t, formatDate } = useI18n();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -38,7 +40,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
 
   const handleHelpful = async (reviewId, isHelpful) => {
     if (!token) {
-      alert('Você precisa estar logado para marcar como útil');
+      alert(t('rev.loginHelpful'));
       return;
     }
 
@@ -61,7 +63,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
       fetchReviews();
     } catch (error) {
       console.error('Erro ao marcar como útil:', error);
-      alert('Erro ao marcar como útil');
+      alert(t('rev.helpfulFail'));
     } finally {
       setMarkingHelpful(null);
     }
@@ -75,7 +77,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
         color: '#999',
         fontFamily: 'Outfit, sans-serif'
       }}>
-        Carregando avaliações...
+        {t('rev.loading')}
       </div>
     );
   }
@@ -88,7 +90,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
         color: '#999',
         fontFamily: 'Outfit, sans-serif'
       }}>
-        Nenhuma avaliação disponível ainda. Seja o primeiro a avaliar!
+        {t('rev.none')}
       </div>
     );
   }
@@ -121,7 +123,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
               fontWeight: '600'
             }}
           >
-            Todas
+            {t('rev.all')}
           </button>
           {[5, 4, 3, 2, 1].map((rating) => (
             <button
@@ -172,7 +174,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
                       color: '#666',
                       fontWeight: '500'
                     }}>
-                      ✓ Compra Verificada
+                      {t('rev.verified')}
                     </span>
                   )}
                 </div>
@@ -180,8 +182,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
                   {review.title}
                 </h4>
                 <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>
-                  por <strong>{review.user_name}</strong> em{' '}
-                  {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                  {t('rev.by', { name: review.user_name, date: formatDate(review.created_at) })}
                 </p>
               </div>
             </div>
@@ -217,7 +218,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
                   opacity: markingHelpful === review.id ? 0.6 : 1
                 }}
               >
-                {userHelpful.has(review.id) ? '👍' : '👍🏻'} Útil ({review.helpful_count})
+                {userHelpful.has(review.id) ? '👍' : '👍🏻'} {t('rev.helpful', { n: review.helpful_count })}
               </button>
             </div>
           </div>
@@ -247,7 +248,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
               opacity: page === 1 ? 0.5 : 1
             }}
           >
-            Anterior
+            {t('rev.prev')}
           </button>
 
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -282,7 +283,7 @@ export default function ReviewsList({ productId, token, refresh = 0 }) {
               opacity: page === totalPages ? 0.5 : 1
             }}
           >
-            Próxima
+            {t('rev.next')}
           </button>
         </div>
       )}

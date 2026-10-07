@@ -4,9 +4,14 @@ import { useWishlistStore } from '../store/wishlistStore';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import WishlistButton from '../components/WishlistButton';
+import { useI18n } from '../i18n';
+import { useRegionStore } from '../store/regionStore';
+import { currencyOfRegion, unitPriceFor } from '../utils/pricing';
 
 export default function Wishlist() {
   const navigate = useNavigate();
+  const { t, money } = useI18n();
+  const { region } = useRegionStore();
   const { user, token } = useAuthStore();
   const { items, fetchWishlist, loading } = useWishlistStore();
   const { addItem } = useCartStore();
@@ -27,15 +32,15 @@ export default function Wishlist() {
       image_url: product.image_url,
       quantity: 1,
     });
-    alert('Produto adicionado ao carrinho!');
+    alert(t('wishlist.added'));
   };
 
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Entre na sua conta para ver a lista de desejos</h1>
-          <Link to="/login" className="text-blue-500 hover:underline">Ir para o login</Link>
+          <h1 className="text-2xl font-bold mb-4">{t('wishlist.loginTitle')}</h1>
+          <Link to="/login" className="text-blue-500 hover:underline">{t('wishlist.goLogin')}</Link>
         </div>
       </div>
     );
@@ -46,7 +51,7 @@ export default function Wishlist() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Carregando sua lista de desejos...</p>
+          <p>{t('wishlist.loading')}</p>
         </div>
       </div>
     );
@@ -57,8 +62,8 @@ export default function Wishlist() {
       <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Lista de desejos</h1>
-          <p className="text-gray-600">{items.length} {items.length === 1 ? 'item' : 'itens'}</p>
+          <h1 className="text-4xl font-bold mb-2">{t('wishlist.title')}</h1>
+          <p className="text-gray-600">{items.length === 1 ? t('wishlist.count.one', { n: 1 }) : t('wishlist.count.other', { n: items.length })}</p>
         </div>
 
         {items.length === 0 ? (
@@ -68,10 +73,10 @@ export default function Wishlist() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold mb-2">Sua lista de desejos está vazia</h2>
-            <p className="text-gray-600 mb-6">Toque no coração dos produtos para salvá-los aqui.</p>
+            <h2 className="text-2xl font-bold mb-2">{t('wishlist.empty')}</h2>
+            <p className="text-gray-600 mb-6">{t('wishlist.emptyHint')}</p>
             <Link to="/shop" className="inline-block bg-black text-white px-8 py-3 rounded hover:bg-gray-800 transition">
-              Continuar comprando
+              {t('common.continueShopping')}
             </Link>
           </div>
         ) : (
@@ -87,7 +92,7 @@ export default function Wishlist() {
                       className="w-full h-full object-cover hover:scale-105 transition duration-300"
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">Sem imagem</div>
+                    <div className="flex items-center justify-center h-full text-gray-400">{t('wishlist.noImage')}</div>
                   )}
 
                   {/* Wishlist Button */}
@@ -111,7 +116,7 @@ export default function Wishlist() {
 
                   <div className="flex items-center justify-between mb-4">
                     <div className="text-2xl font-bold">
-                      R$ {item.price ? parseFloat(item.price).toFixed(2) : '0.00'}
+                      {unitPriceFor(item, currencyOfRegion(region)) === null ? t('product.unavailableRegion') : money(unitPriceFor(item, currencyOfRegion(region)), currencyOfRegion(region))}
                     </div>
                   </div>
 
@@ -119,7 +124,7 @@ export default function Wishlist() {
                     onClick={() => handleAddToCart(item)}
                     className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
                   >
-                    Adicionar ao carrinho
+                    {t('wishlist.addToCart')}
                   </button>
                 </div>
               </div>

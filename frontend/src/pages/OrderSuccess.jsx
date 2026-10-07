@@ -1,16 +1,32 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useCartStore } from '../store/cartStore';
+import { useI18n } from '../i18n';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const orderId = searchParams.get('orderId');
   const clearCart = useCartStore((state) => state.clearCart);
+  const [orderNumber, setOrderNumber] = useState('');
 
   useEffect(() => {
     clearCart();
   }, [clearCart]);
+
+  // Mostra o numero do pedido (e nao o ID interno)
+  useEffect(() => {
+    if (!orderId) return;
+    axios.get(`${API_URL}/orders/${orderId}`)
+      .then(({ data }) => setOrderNumber(data.order_number || ''))
+      .catch(() => {});
+  }, [orderId]);
+
+  const label = {fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px 32px', border: '1px solid #000', cursor: 'pointer', textTransform: 'uppercase'};
 
   return (
     <div className="pt-16 min-h-screen bg-white">
@@ -18,45 +34,35 @@ export default function OrderSuccess() {
         <div style={{marginBottom: '32px'}}>
           <div style={{fontSize: '64px', marginBottom: '16px'}}>✓</div>
           <h1 style={{fontFamily: 'Outfit, sans-serif', fontSize: '36px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase'}}>
-            Order Confirmed
+            {t('success.title')}
           </h1>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '16px', fontStyle: 'italic', fontWeight: '300', color: '#666'}}>
-            Thank you for your purchase!
+            {t('success.thanks')}
           </p>
         </div>
 
         <div style={{maxWidth: '600px', margin: '0 auto', marginBottom: '48px'}}>
           <div style={{border: '1px solid #000', padding: '32px', marginBottom: '24px'}}>
             <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', letterSpacing: '1px', marginBottom: '16px', color: '#999', textTransform: 'uppercase'}}>
-              Order Number
+              {t('success.number')}
             </p>
             <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '18px', fontWeight: '700', marginBottom: '24px'}}>
-              {orderId || 'Loading...'}
+              {orderNumber ? `#${orderNumber}` : '…'}
             </p>
 
             <p style={{fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic', fontWeight: '300', color: '#666', lineHeight: '1.6'}}>
-              A confirmation email has been sent to your email address. <br/>
-              You can track your order status anytime from your account.
+              {t('success.emailSent')} <br/>
+              {t('success.track')}
             </p>
           </div>
-
-          <p style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', letterSpacing: '1px', color: '#999', marginBottom: '24px', textTransform: 'uppercase'}}>
-            Expected Delivery: 5-7 Business Days
-          </p>
         </div>
 
         <div className="flex gap-4 justify-center">
-          <button
-            onClick={() => navigate('/shop')}
-            style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px 32px', border: '1px solid #000', background: '#000', color: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
-          >
-            Continue Shopping
+          <button onClick={() => navigate('/shop')} style={{...label, background: '#000', color: '#fff'}}>
+            {t('success.continue')}
           </button>
-          <button
-            onClick={() => navigate('/')}
-            style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '12px 32px', border: '1px solid #000', background: '#fff', color: '#000', cursor: 'pointer', textTransform: 'uppercase'}}
-          >
-            Back to Home
+          <button onClick={() => navigate('/')} style={{...label, background: '#fff', color: '#000'}}>
+            {t('success.home')}
           </button>
         </div>
       </div>

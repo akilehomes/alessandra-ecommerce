@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '../i18n';
 
 export default function About() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   return (
     <div className="bg-white text-gray-900 pt-16">
@@ -10,10 +12,10 @@ export default function About() {
       <section className="py-32 px-6">
         <div className="max-w-7xl mx-auto text-center">
           <h1 style={{fontFamily: 'Outfit, sans-serif', fontSize: '36px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase'}}>
-            About
+            {t('about.title')}
           </h1>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic', fontWeight: '300', color: '#666'}}>
-            Nossa Missão
+            {t('about.mission')}
           </p>
         </div>
       </section>
@@ -22,10 +24,10 @@ export default function About() {
       <section className="py-24 px-6">
         <div className="max-w-2xl mx-auto">
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '16px', fontStyle: 'italic', fontWeight: '300', lineHeight: '1.8', marginBottom: '20px', color: '#666'}}>
-            Alessandra Zanetti é uma curadoria de peças cuidadosamente selecionadas para transformar seus espaços em ambientes sofisticados e aconchegantes.
+            {t('about.p1')}
           </p>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '16px', fontStyle: 'italic', fontWeight: '300', lineHeight: '1.8', color: '#666'}}>
-            Cada produto representa a excelência em design e funcionalidade, refletindo uma visão contemporânea do luxo acessível.
+            {t('about.p2')}
           </p>
         </div>
       </section>
@@ -34,19 +36,19 @@ export default function About() {
       <section className="grid grid-cols-1 md:grid-cols-2 gap-0">
         <div className="py-24 px-6">
           <h2 style={{fontFamily: 'Outfit, sans-serif', fontSize: '24px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase'}}>
-            Design
+            {t('about.design')}
           </h2>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic', fontWeight: '300', color: '#666'}}>
-            Europeu com alma brasileira
+            {t('about.designSub')}
           </p>
         </div>
 
         <div className="py-24 px-6">
           <h2 style={{fontFamily: 'Outfit, sans-serif', fontSize: '24px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase'}}>
-            Qualidade
+            {t('about.quality')}
           </h2>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic', fontWeight: '300', color: '#666'}}>
-            Peças premium e artesanato
+            {t('about.qualitySub')}
           </p>
         </div>
       </section>
@@ -57,7 +59,7 @@ export default function About() {
           onClick={() => navigate('/shop')}
           style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '10px 24px', border: '1px solid #000', background: '#000', color: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
         >
-          Shop
+          {t('about.shop')}
         </button>
       </section>
     </div>

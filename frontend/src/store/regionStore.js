@@ -21,11 +21,22 @@ const REGIONS = {
   },
 };
 
+// Regiao escolhida fica salva no navegador; sem escolha, o padrao e Brasil
+const savedRegion = (() => {
+  try {
+    const r = localStorage.getItem('region');
+    return REGIONS[r] ? r : 'BR';
+  } catch (e) {
+    return 'BR';
+  }
+})();
+
 export const useRegionStore = create((set) => ({
-  region: 'BR', // Default Brasil
+  region: savedRegion,
   exchangeRate: 1.0, // BRL to EUR rate (will update dynamically)
 
   setRegion: (region) => {
+    try { localStorage.setItem('region', region); } catch (e) { /* ignora */ }
     set({ region });
     // Fetch exchange rate when switching to EUR region
     if (region === 'PT' || region === 'EU') {

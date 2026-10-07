@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useI18n } from '../i18n';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export default function ShippingSelector({ country = 'BR', items = [], onShippingSelect, zipCode }) {
+  const { t, money, formatDate } = useI18n();
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -42,8 +44,8 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
       console.error('Erro ao calcular frete:', err);
       setError(
         err.response?.data?.code === 'NO_SHIPPING_OPTIONS'
-          ? 'Há um item com frete especial. Volte ao carrinho e peça o orçamento de frete.'
-          : (err.response?.data?.error || 'Erro ao calcular frete. Tente novamente.')
+          ? t('ship.specialInCart')
+          : t('ship.calcError')
       );
     } finally {
       setLoading(false);
@@ -67,7 +69,7 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
         color: '#999',
         fontFamily: 'Outfit, sans-serif',
       }}>
-        Digite o CEP para calcular o frete
+        {t('ship.enterZip')}
       </div>
     );
   }
@@ -80,7 +82,7 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
         color: '#999',
         fontFamily: 'Outfit, sans-serif',
       }}>
-        Calculando opções de frete...
+        {t('ship.loadingOptions')}
       </div>
     );
   }
@@ -109,22 +111,19 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
         color: '#999',
         fontFamily: 'Outfit, sans-serif',
       }}>
-        Nenhuma opção de frete disponível para esta localização
+        {t('ship.noneAvailable')}
       </div>
     );
   }
 
   const formatPrice = (price) => {
-    if (selectedShipping?.currency === 'EUR') {
-      return `€ ${price.toFixed(2)}`;
-    }
-    return `R$ ${price.toFixed(2)}`;
+    return money(price, selectedShipping?.currency === 'EUR' || country.toUpperCase() !== 'BR' ? 'EUR' : 'BRL');
   };
 
   return (
     <div style={{ fontFamily: 'Outfit, sans-serif' }}>
       <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
-        Opções de Frete
+        {t('ship.optionsTitle')}
       </h3>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -155,14 +154,14 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
                   {formatPrice(option.price)}
                 </p>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
-                  {option.delivery_time ? `${option.delivery_time} dia${option.delivery_time > 1 ? 's' : ''}` : 'Prazo informado no envio'}
+                  {option.delivery_time ? (option.delivery_time === 1 ? t('ship.day.one', { n: 1 }) : t('ship.day.other', { n: option.delivery_time })) : t('ship.daysUnknown')}
                 </p>
               </div>
             </div>
 
             {option.delivery_date && (
               <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#999' }}>
-                Entrega em: {new Date(option.delivery_date).toLocaleDateString('pt-BR')}
+                {t('ship.deliveryOn', { date: formatDate(option.delivery_date) })}
               </p>
             )}
 
@@ -175,7 +174,7 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
                 color: '#000',
                 fontWeight: '600',
               }}>
-                ✓ Selecionado
+                {t('ship.selectedMark')}
               </div>
             )}
           </div>
@@ -191,7 +190,7 @@ export default function ShippingSelector({ country = 'BR', items = [], onShippin
           fontSize: '12px',
           color: '#666',
         }}>
-          <strong>Frete selecionado:</strong> {selectedShipping.service} - {formatPrice(selectedShipping.price)}
+          <strong>{t('ship.selected')}</strong> {selectedShipping.service} - {formatPrice(selectedShipping.price)}
         </div>
       )}
     </div>

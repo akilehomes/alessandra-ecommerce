@@ -27,6 +27,7 @@ router.post('/', async (req, res) => {
       customerCompanyName,
       customerDocumentType,
       customerDocumentNumber,
+      language,
       paymentMethod,
       couponCode,
       shippingMethodId,
@@ -180,7 +181,9 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Shipping to this country is not available yet', code: 'SHIPPING_UNAVAILABLE' });
       }
       shippingCost = Math.round(flat * 100) / 100;
-      chosenShipping = { id: 'flat-eu', carrier: 'Envio internacional', service: 'Padrão', delivery_time: null };
+      chosenShipping = language === 'en'
+        ? { id: 'flat-eu', carrier: 'International shipping', service: 'Standard', delivery_time: null }
+        : { id: 'flat-eu', carrier: 'Envio internacional', service: 'Padrão', delivery_time: null };
     }
 
     // Cupom: validado no banco e calculado sobre o subtotal do servidor.
@@ -211,9 +214,9 @@ router.post('/', async (req, res) => {
         payment_method, region, shipping_address, coupon_code,
         shipping_method_id, shipping_carrier, shipping_service, shipping_days,
         destination_country, customer_person_type, customer_company_name,
-        customer_document_type, customer_document_number, billing_address
+        customer_document_type, customer_document_number, billing_address, customer_language
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17, $18, $19,
-                $20, $21, $22, $23, $24, $25::jsonb)
+                $20, $21, $22, $23, $24, $25::jsonb, $26)
        RETURNING *`,
       [
         userId,
@@ -241,6 +244,7 @@ router.post('/', async (req, res) => {
         docCheck.type,
         docCheck.number,
         JSON.stringify(billing),
+        language === 'en' ? 'en' : 'pt',
       ]
     );
 
@@ -417,6 +421,9 @@ router.get('/:orderId', async (req, res) => {
       discount: order.discount,
       total: order.total,
       region: order.region, // moeda do pedido (BRL/EUR)
+      shipping_carrier: order.shipping_carrier,
+      shipping_service: order.shipping_service,
+      shipping_days: order.shipping_days,
       created_at: order.created_at,
       shipping_address: order.shipping_address || null,
       items: itemsResult.rows,

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useRegionStore } from '../store/regionStore';
 import WishlistButton from './WishlistButton';
+import { useI18n } from '../i18n';
+import { currencyOfRegion, unitPriceFor } from '../utils/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
@@ -15,7 +17,7 @@ const REGION_CONFIG = {
 export default function SearchResults({ filters = {} }) {
   const navigate = useNavigate();
   const { region } = useRegionStore();
-  const regionConfig = REGION_CONFIG[region];
+  const { t, money } = useI18n();
   
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -59,7 +61,7 @@ export default function SearchResults({ filters = {} }) {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '64px 0', color: '#666', fontFamily: 'Outfit, sans-serif' }}>
-        Buscando produtos...
+        {t('sr.searching')}
       </div>
     );
   }
@@ -116,7 +118,7 @@ export default function SearchResults({ filters = {} }) {
           </button>
         </div>
         <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '12px', color: '#666' }}>
-          {pagination.total} resultado{pagination.total !== 1 ? 's' : ''}
+          {pagination.total === 1 ? t('sr.results.one', { n: 1 }) : t('sr.results.other', { n: pagination.total })}
         </div>
       </div>
 
@@ -124,7 +126,7 @@ export default function SearchResults({ filters = {} }) {
       {products.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '64px 0' }}>
           <p style={{ fontSize: '16px', color: '#666', fontFamily: 'Outfit, sans-serif' }}>
-            Nenhum produto encontrado
+            {t('sr.none')}
           </p>
         </div>
       ) : (
@@ -164,7 +166,7 @@ export default function SearchResults({ filters = {} }) {
                     letterSpacing: '0.5px',
                     color: '#666'
                   }}>
-                    {regionConfig.symbol} {parseFloat(product.price).toFixed(2)}
+                    {unitPriceFor(product, currencyOfRegion(region)) === null ? t('product.unavailableRegion') : money(unitPriceFor(product, currencyOfRegion(region)), currencyOfRegion(region))}
                   </p>
                 </div>
               </div>

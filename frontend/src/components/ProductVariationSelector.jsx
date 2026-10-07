@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '../i18n';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 export default function ProductVariationSelector({ productId, onVariationSelect }) {
+  const { t, formatDate } = useI18n();
   const [variants, setVariants] = useState([]);
   const [options, setOptions] = useState({});
   const [selectedValues, setSelectedValues] = useState({});
@@ -67,7 +69,7 @@ export default function ProductVariationSelector({ productId, onVariationSelect 
         marginBottom: '12px',
         color: '#000'
       }}>
-        Escolha uma opção
+        {t('var.choose')}
       </h4>
 
       {Object.entries(options).map(([attribute, values]) => (

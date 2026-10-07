@@ -1,14 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '../i18n';
 
 export default function Projects() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const projects = [
-    { id: 1, title: 'Lisbon', subtitle: 'Apartment' },
-    { id: 2, title: 'Porto', subtitle: 'Studio' },
-    { id: 3, title: 'São Paulo', subtitle: 'Showroom' },
-    { id: 4, title: 'Rio', subtitle: 'Loft' },
+    { id: 1, title: 'Lisboa', subtitle: t('projects.apartment') },
+    { id: 2, title: 'Porto', subtitle: t('projects.studio') },
+    { id: 3, title: 'São Paulo', subtitle: t('projects.showroom') },
+    { id: 4, title: 'Rio', subtitle: t('projects.loft') },
   ];
 
   return (
@@ -17,10 +19,10 @@ export default function Projects() {
       <section className="py-32 px-6">
         <div className="max-w-7xl mx-auto text-center">
           <h1 style={{fontFamily: 'Outfit, sans-serif', fontSize: '36px', fontWeight: '700', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase'}}>
-            Projects
+            {t('projects.title')}
           </h1>
           <p style={{fontFamily: 'Crimson Text, serif', fontSize: '14px', fontStyle: 'italic', fontWeight: '300', color: '#666'}}>
-            Espaços transformados
+            {t('projects.sub')}
           </p>
         </div>
       </section>
@@ -53,7 +55,7 @@ export default function Projects() {
           onClick={() => navigate('/shop')}
           style={{fontFamily: 'Outfit, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '10px 24px', border: '1px solid #000', background: '#000', color: '#fff', cursor: 'pointer', textTransform: 'uppercase'}}
         >
-          Shop
+          {t('projects.shop')}
         </button>
       </section>
     </div>

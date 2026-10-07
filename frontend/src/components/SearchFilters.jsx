@@ -1,9 +1,11 @@
+import { useI18n } from '../i18n';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 export default function SearchFilters({ onFiltersChange, initialFilters = {} }) {
+  const { t } = useI18n();
   const [categories, setCategories] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
   const [filters, setFilters] = useState({
@@ -64,7 +66,7 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
   };
 
   if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Carregando filtros...</div>;
+    return <div style={{ padding: '20px', textAlign: 'center' }}>{t('sf.loading')}</div>;
   }
 
   return (
@@ -78,7 +80,7 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', fontFamily: 'Outfit, sans-serif' }}>
-          Filtros
+          {t('sf.title')}
         </h3>
         <button
           onClick={handleReset}
@@ -92,20 +94,20 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
             textDecoration: 'underline'
           }}
         >
-          Limpar
+          {t('sf.clear')}
         </button>
       </div>
 
       {/* Search */}
       <div style={{ marginBottom: '24px' }}>
         <label style={{ fontSize: '12px', fontWeight: '600', fontFamily: 'Outfit, sans-serif', display: 'block', marginBottom: '8px' }}>
-          BUSCAR
+          {t('sf.search')}
         </label>
         <input
           type="text"
           value={filters.q}
           onChange={(e) => handleFilterChange('q', e.target.value)}
-          placeholder="Nome ou descrição..."
+          placeholder={t('sf.searchPh')}
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -121,7 +123,7 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
       {/* Category */}
       <div style={{ marginBottom: '24px' }}>
         <label style={{ fontSize: '12px', fontWeight: '600', fontFamily: 'Outfit, sans-serif', display: 'block', marginBottom: '8px' }}>
-          CATEGORIA
+          {t('sf.category')}
         </label>
         <select
           value={filters.category}
@@ -135,7 +137,7 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
             fontSize: '13px'
           }}
         >
-          <option value="all">Todas</option>
+          <option value="all">{t('sf.all')}</option>
           {categories.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
@@ -145,14 +147,14 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
       {/* Price Range */}
       <div style={{ marginBottom: '24px' }}>
         <label style={{ fontSize: '12px', fontWeight: '600', fontFamily: 'Outfit, sans-serif', display: 'block', marginBottom: '8px' }}>
-          FAIXA DE PREÇO
+          {t('sf.priceRange')}
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
           <input
             type="number"
             value={filters.minPrice}
             onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-            placeholder="Mín."
+            placeholder={t('sf.min')}
             min={0}
             style={{
               padding: '8px 12px',
@@ -166,7 +168,7 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
             type="number"
             value={filters.maxPrice}
             onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-            placeholder="Máx."
+            placeholder={t('sf.max')}
             min={0}
             style={{
               padding: '8px 12px',
@@ -178,14 +180,14 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
           />
         </div>
         <p style={{ fontSize: '11px', color: '#666', marginTop: '4px', margin: '4px 0 0 0', fontFamily: 'Outfit, sans-serif' }}>
-          Até R$ {priceRange.max.toFixed(0)}
+          {t('sf.upTo', { amount: `R$ ${priceRange.max.toFixed(0)}` })}
         </p>
       </div>
 
       {/* Sort */}
       <div style={{ marginBottom: '24px' }}>
         <label style={{ fontSize: '12px', fontWeight: '600', fontFamily: 'Outfit, sans-serif', display: 'block', marginBottom: '8px' }}>
-          ORDENAR
+          {t('sf.sort')}
         </label>
         <select
           value={filters.sortBy}
@@ -199,10 +201,10 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {} }) 
             fontSize: '13px'
           }}
         >
-          <option value="newest">Novos</option>
-          <option value="name">Nome (A-Z)</option>
-          <option value="price-asc">Preço (Menor)</option>
-          <option value="price-desc">Preço (Maior)</option>
+          <option value="newest">{t('sf.newest')}</option>
+          <option value="name">{t('sf.nameAsc')}</option>
+          <option value="price-asc">{t('sf.priceAsc')}</option>
+          <option value="price-desc">{t('sf.priceDesc')}</option>
         </select>
       </div>
     </div>

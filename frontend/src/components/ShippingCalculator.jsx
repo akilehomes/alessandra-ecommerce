@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { useI18n } from '../i18n';
 import SpecialShippingRequest from './SpecialShippingRequest';
 import './ShippingCalculator.css';
 
@@ -44,6 +45,8 @@ export default function ShippingCalculator({
   bare = false,
   onSpecial,
 }) {
+  const { t, money } = useI18n();
+  const currencyCode = symbol === '€' ? 'EUR' : 'BRL';
   const [cep, setCep] = useState(readSavedCep);
   const [result, setResult] = useState(null); // { options, cep }
   const [selectedId, setSelectedId] = useState(null);
@@ -75,7 +78,7 @@ export default function ShippingCalculator({
   const calculate = useCallback(async (cepValue) => {
     const digits = cepValue.replace(/\D/g, '');
     if (digits.length !== 8) {
-      setError('Informe um CEP com 8 números.');
+      setError(t('ship.zipInvalid'));
       return;
     }
     if (!items || items.length === 0) return;
@@ -96,7 +99,7 @@ export default function ShippingCalculator({
       if (options.length === 0) {
         setResult(null);
         choose(null);
-        setError('Não encontramos opções de entrega para este CEP.');
+        setError(t('ship.noOptionsZip'));
         return;
       }
       setResult({ options, cep: formatCep(digits) });
@@ -120,8 +123,8 @@ export default function ShippingCalculator({
       markSpecial(null);
       setError(
         err.response?.status === 429
-          ? 'Muitas consultas seguidas. Aguarde um instante e tente de novo.'
-          : 'Não foi possível calcular o frete agora. Tente novamente.'
+          ? t('ship.tooMany')
+          : t('ship.failed')
       );
     } finally {
       if (current === requestId.current) setLoading(false);
@@ -150,23 +153,23 @@ export default function ShippingCalculator({
 
   return (
     <section className={`psc${bare ? ' psc--bare' : ''}`} aria-labelledby="psc-title">
-      <h3 id="psc-title" className="psc-title">Calcular frete e prazo</h3>
+      <h3 id="psc-title" className="psc-title">{t('ship.title')}</h3>
 
       <form className="psc-form" onSubmit={handleSubmit}>
-        <label htmlFor="psc-cep" className="psc-visually-hidden">CEP de entrega</label>
+        <label htmlFor="psc-cep" className="psc-visually-hidden">{t('ship.zipLabel')}</label>
         <input
           id="psc-cep"
           className="psc-input"
           type="text"
           inputMode="numeric"
           autoComplete="postal-code"
-          placeholder="Seu CEP (00000-000)"
+          placeholder={t('ship.zipPh')}
           value={cep}
           maxLength={9}
           onChange={(e) => setCep(formatCep(e.target.value))}
         />
         <button type="submit" className="psc-button" disabled={loading}>
-          {loading ? 'Calculando…' : 'Calcular'}
+          {loading ? t('ship.calculating') : t('ship.calc')}
         </button>
       </form>
 
@@ -176,7 +179,7 @@ export default function ShippingCalculator({
         target="_blank"
         rel="noopener noreferrer"
       >
-        Não sei meu CEP
+        {t('ship.dontKnowZip')}
       </a>
 
       <div aria-live="polite">
@@ -184,12 +187,11 @@ export default function ShippingCalculator({
 
         {special && (
           <div className="psc-special">
-            <strong>Frete especial</strong>
-            Este item é grande ou pesado demais para as transportadoras automáticas. Peça um orçamento de frete e
-            respondemos por e-mail com o valor.
+            <strong>{t('ship.specialTitle')}</strong>
+            {t('ship.specialText')}
             {(() => {
               const names = items.filter((i) => special.products.includes(i.productId)).map((i) => i.name).filter(Boolean);
-              return names.length > 0 ? <div className="psc-special-items">Item: {names.join(', ')}</div> : <div className="psc-special-items" />;
+              return names.length > 0 ? <div className="psc-special-items">{t('ship.specialItem', { names: names.join(', ') })}</div> : <div className="psc-special-items" />;
             })()}
             <SpecialShippingRequest items={items} specialProducts={special.products} cep={lastCep.current} />
           </div>
@@ -198,13 +200,13 @@ export default function ShippingCalculator({
         {result && (
           <div className="psc-result">
             <p className="psc-summary">
-              Entrega para {result.cep} · {totalUnits} {totalUnits === 1 ? 'unidade' : 'unidades'}
+              {t('ship.deliveryTo', { zip: result.cep, units: totalUnits === 1 ? t('ship.unit.one', { n: 1 }) : t('ship.unit.other', { n: totalUnits }) })}
             </p>
-            <ul className="psc-list" role={selectable ? 'radiogroup' : undefined} aria-label="Opções de entrega">
+            <ul className="psc-list" role={selectable ? 'radiogroup' : undefined} aria-label={t('ship.optionsLabel')}>
               {result.options.map((option) => {
                 const label = optionLabel(option);
                 const days = option.delivery_time > 0
-                  ? `${option.delivery_time} ${option.delivery_time === 1 ? 'dia útil' : 'dias úteis'}`
+                  ? (option.delivery_time === 1 ? t('ship.day.one', { n: 1 }) : t('ship.day.other', { n: option.delivery_time }))
                   : null;
                 const content = (
                   <>
@@ -212,7 +214,7 @@ export default function ShippingCalculator({
                       <span className="psc-carrier">{label}</span>
                       {days && <span className="psc-days"> · {days}</span>}
                     </div>
-                    <strong className="psc-price">{symbol} {Number(option.price).toFixed(2)}</strong>
+                    <strong className="psc-price">{money(Number(option.price), currencyCode)}</strong>
                   </>
                 );
                 return selectable ? (
@@ -235,8 +237,8 @@ export default function ShippingCalculator({
             </ul>
             <p className="psc-note">
               {selectable
-                ? 'O valor escolhido entra no total. Você poderá confirmar o frete no checkout.'
-                : 'Valores para este produto. No carrinho, o frete considera todos os itens e pode variar.'}
+                ? t('ship.noteSelectable')
+                : t('ship.noteProduct')}
             </p>
           </div>
         )}

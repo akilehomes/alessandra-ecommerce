@@ -53,7 +53,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `SELECT w.id, w.user_id, w.product_id, w.created_at,
-              p.name, p.price, p.description, p.image_url
+              p.name, p.price, p.price_eur, p.description, p.image_url
        FROM wishlist w
        JOIN products p ON w.product_id = p.id
        WHERE w.user_id = $1

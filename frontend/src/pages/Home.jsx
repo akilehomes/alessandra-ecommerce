@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '../i18n';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   return (
     <div className="bg-white pt-16">
@@ -26,7 +28,7 @@ export default function Home() {
             fontWeight: '300',
             color: '#666'
           }}>
-            Design Europeu com Alma Brasileira
+            {t('home.tagline')}
           </p>
         </div>
       </section>
@@ -45,7 +47,7 @@ export default function Home() {
             marginBottom: '8px',
             textTransform: 'uppercase'
           }}>
-            SHOP
+            {t('home.shop')}
           </h2>
           <p style={{
             fontFamily: 'Crimson Text, serif',
@@ -54,7 +56,7 @@ export default function Home() {
             fontWeight: '300',
             color: '#666'
           }}>
-            Peças selecionadas
+            {t('home.shopSub')}
           </p>
         </div>
 
@@ -70,7 +72,7 @@ export default function Home() {
             marginBottom: '8px',
             textTransform: 'uppercase'
           }}>
-            PROJECTS
+            {t('home.projects')}
           </h2>
           <p style={{
             fontFamily: 'Crimson Text, serif',
@@ -79,69 +81,8 @@ export default function Home() {
             fontWeight: '300',
             color: '#666'
           }}>
-            Espaços transformados
+            {t('home.projectsSub')}
           </p>
-        </div>
-      </section>
-
-      {/* Newsletter Section */}
-      <section className="py-24 px-6 text-center">
-        <div style={{maxWidth: '500px', margin: '0 auto'}}>
-          <h2 style={{
-            fontFamily: 'Outfit, sans-serif',
-            fontSize: '32px',
-            fontWeight: '700',
-            letterSpacing: '1px',
-            marginBottom: '24px',
-            textTransform: 'uppercase'
-          }}>
-            NEWSLETTER
-          </h2>
-          <p style={{
-            fontFamily: 'Crimson Text, serif',
-            fontSize: '14px',
-            fontStyle: 'italic',
-            fontWeight: '300',
-            marginBottom: '24px',
-            color: '#666'
-          }}>
-            Sign up and get 10% off your next order
-          </p>
-          <div style={{marginBottom: '20px'}}>
-            <input
-              type="email"
-              placeholder="Email address"
-              style={{
-                fontFamily: 'Outfit, sans-serif',
-                fontSize: '12px',
-                padding: '8px 0',
-                borderBottom: '1px solid #000',
-                borderTop: 'none',
-                borderLeft: 'none',
-                borderRight: 'none',
-                outline: 'none',
-                width: '100%',
-                background: 'transparent',
-                color: '#000'
-              }}
-            />
-          </div>
-          <button
-            style={{
-              fontFamily: 'Outfit, sans-serif',
-              fontSize: '11px',
-              fontWeight: '700',
-              letterSpacing: '1px',
-              padding: '10px 24px',
-              border: '1px solid #000',
-              background: '#000',
-              color: '#fff',
-              cursor: 'pointer',
-              textTransform: 'uppercase'
-            }}
-          >
-            Subscribe
-          </button>
         </div>
       </section>
     </div>

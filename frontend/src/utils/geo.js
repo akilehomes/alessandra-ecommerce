@@ -65,9 +65,9 @@ export const emptyAddress = (country = 'BR') => ({
 });
 
 // Uma linha legivel: "Av Paulista, 1000 - Bela Vista, Sao Paulo/SP, 01310-100, Brasil"
-export function formatAddress(a, countries = []) {
+export function formatAddress(a, countries = [], countryName) {
   if (!a) return '';
-  const country = (countries.find((c) => c.code === a.country) || {}).name || a.country || '';
+  const country = countryName ? countryName(a.country) : ((countries.find((c) => c.code === a.country) || {}).name || a.country || '');
   const first = [a.street, a.number].filter(Boolean).join(', ');
   const second = [a.complement, a.district].filter(Boolean).join(' - ');
   const cityState = [a.city, a.state].filter(Boolean).join(a.country === 'BR' ? '/' : ', ');
