@@ -70,9 +70,9 @@ export default function LocaleSwitcher() {
           <div style={{ padding: '10px 10px 4px', fontFamily: 'Outfit, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#6b7280' }}>
             {t('locale.language')}
           </div>
-          <div style={{ display: 'flex', gap: 6, padding: '0 10px 10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6, padding: '0 10px 10px' }}>
             {Object.entries(LANGUAGES).map(([code, name]) => (
-              <button key={code} type="button" onClick={() => setLang(code)} style={{ ...row(lang === code), width: 'auto', flex: 1, border: '1px solid #d1d5db', justifyContent: 'center' }}>
+              <button key={code} type="button" onClick={() => setLang(code)} style={{ ...row(lang === code), width: 'auto', minWidth: 0, border: '1px solid #d1d5db', justifyContent: 'center' }}>
                 {name}
               </button>
             ))}
