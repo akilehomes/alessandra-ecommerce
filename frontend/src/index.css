@@ -1,5 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital@0;1&family=Outfit:wght@400;600;700&display=swap');
 
+:root {
+  /* Cor da marca Alessandra Zanetti: verde sage. RGB 173,195,175 / CMYK 11 0 10 24 */
+  --brand-sage: #adc3af;
+  --brand-sage-hover: #9bb59e;
+}
+
 * {
   margin: 0;
   padding: 0;

@@ -9,8 +9,6 @@
 
 .auth-form {
   background: rgba(255, 255, 255, 0.2);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   border-radius: 12px;
   padding: 40px;
   width: 100%;
@@ -56,8 +54,8 @@
 .auth-form .btn-primary {
   width: 100%;
   padding: 12px;
-  background: #006039;
-  color: #fff;
+  background: var(--brand-sage);
+  color: #000;
   border: none;
   border-radius: 6px;
   font-weight: 600;
@@ -67,9 +65,9 @@
 }
 
 .auth-form .btn-primary:hover:not(:disabled) {
-  background: #00724a;
+  background: var(--brand-sage-hover);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 96, 57, 0.4);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 .auth-form .btn-primary:disabled {
