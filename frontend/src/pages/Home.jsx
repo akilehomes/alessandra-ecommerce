@@ -27,11 +27,11 @@ export default function Home() {
         >
           <source src="/alessandra-hero.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0  flex items-end justify-center pb-12">
+        <div className="absolute inset-0  flex items-end justify-center" style={{ paddingBottom: 'calc(48px + 20vh)' }}>
           <div className="text-center text-white">
             <p style={{
               fontFamily: 'Crimson Text, serif',
-              fontSize: '24px',
+              fontSize: '28.8px',
               fontStyle: 'italic',
               fontWeight: '300',
               textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
