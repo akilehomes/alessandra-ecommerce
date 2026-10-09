@@ -8,7 +8,7 @@
 }
 
 .auth-form {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   border-radius: 12px;
@@ -25,11 +25,11 @@
   text-align: center;
 }
 
-.form-group {
+.auth-form .form-group {
   margin-bottom: 20px;
 }
 
-.form-group label {
+.auth-form .form-group label {
   display: block;
   margin-bottom: 8px;
   color: #000;
@@ -37,7 +37,7 @@
   font-size: 14px;
 }
 
-.form-group input {
+.auth-form .form-group input {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -47,16 +47,16 @@
   box-sizing: border-box;
 }
 
-.form-group input:focus {
+.auth-form .form-group input:focus {
   outline: none;
   border-color: #000;
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 
-.btn-primary {
+.auth-form .btn-primary {
   width: 100%;
   padding: 12px;
-  background: #000;
+  background: #006039;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -66,17 +66,18 @@
   transition: transform 0.2s;
 }
 
-.btn-primary:hover:not(:disabled) {
+.auth-form .btn-primary:hover:not(:disabled) {
+  background: #00724a;
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 5px 15px rgba(0, 96, 57, 0.4);
 }
 
-.btn-primary:disabled {
+.auth-form .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.error-message {
+.auth-form .error-message {
   background: #fee;
   border: 1px solid #f99;
   color: #c33;
@@ -104,15 +105,15 @@
 }
 
 /* Campo de senha com botao Mostrar/Ocultar */
-.password-field {
+.auth-form .password-field {
   position: relative;
 }
 
-.password-field input {
+.auth-form .password-field input {
   padding-right: 88px;
 }
 
-.password-toggle {
+.auth-form .password-toggle {
   position: absolute;
   right: 6px;
   top: 50%;
@@ -127,11 +128,11 @@
   border-radius: 4px;
 }
 
-.password-toggle:hover {
+.auth-form .password-toggle:hover {
   background: rgba(0, 0, 0, 0.08);
 }
 
-.forgot-link {
+.auth-form .forgot-link {
   display: block;
   text-align: right;
   margin-top: 8px;
@@ -141,11 +142,11 @@
   font-weight: 600;
 }
 
-.forgot-link:hover {
+.auth-form .forgot-link:hover {
   text-decoration: underline;
 }
 
-.success-message {
+.auth-form .success-message {
   background: #efffef;
   border: 1px solid #9c9;
   color: #2a6b2a;
@@ -155,7 +156,7 @@
   font-size: 14px;
 }
 
-.auth-hint {
+.auth-form .auth-hint {
   color: #000;
   font-size: 14px;
   margin: -10px 0 20px 0;
