@@ -1,17 +1,17 @@
 export default {
   'home.tagline': 'Diseño Europeo con Alma Brasileña',
-  'home.shop': 'TIENDA',
+  'home.shop': 'COLECCIÓN',
   'home.shopSub': 'Piezas seleccionadas',
   'home.projects': 'PROYECTOS',
   'home.projectsSub': 'Espacios transformados',
 
-  'shop.title': 'Productos',
+  'shop.title': 'Piezas',
   'shop.count.one': '{n} artículo',
   'shop.count.other': '{n} artículos',
   'shop.view': 'Ver',
   'shop.advancedSearch': 'Búsqueda avanzada',
   'shop.loading': 'Cargando productos…',
-  'shop.soldOut': 'Agotado',
+  'shop.soldOut': 'Pieza agotada',
   'shop.empty': 'No hay productos disponibles por el momento.',
 
   'about.title': 'Acerca de',
@@ -22,7 +22,7 @@ export default {
   'about.designSub': 'Europeo con alma brasileña',
   'about.quality': 'Calidad',
   'about.qualitySub': 'Piezas premium y artesanía',
-  'about.shop': 'Tienda',
+  'about.shop': 'Colección',
 
   'projects.title': 'Proyectos',
   'projects.sub': 'Espacios transformados',
@@ -30,7 +30,7 @@ export default {
   'projects.studio': 'Estudio',
   'projects.showroom': 'Showroom',
   'projects.loft': 'Loft',
-  'projects.shop': 'Tienda',
+  'projects.shop': 'Colección',
 
   'success.title': 'Pedido confirmado',
   'success.thanks': '¡Gracias por tu compra!',

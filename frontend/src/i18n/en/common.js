@@ -1,15 +1,15 @@
 export default {
   // Menu
   'nav.home': 'Home',
-  'nav.shop': 'Shop',
+  'nav.shop': 'Collection',
   'nav.projects': 'Projects',
   'nav.about': 'About',
   'nav.login': 'Sign in',
   'nav.register': 'Create account',
   'nav.logout': 'Sign out',
-  'nav.wishlist': 'Wishlist',
+  'nav.wishlist': 'My selection',
   'nav.cart': 'Bag',
-  'nav.search': 'Search',
+  'nav.search': 'Explore',
   'nav.language': 'Language',
   'nav.region': 'Region',
   'region.BR': '🇧🇷 Brazil',
@@ -17,8 +17,8 @@ export default {
   'region.EU': '🇪🇺 Europe',
 
   // Footer
-  'footer.shop': 'Shop',
-  'footer.allProducts': 'All products',
+  'footer.shop': 'Collection',
+  'footer.allProducts': 'All pieces',
   'footer.search': 'Advanced search',
   'footer.studio': 'Studio',
   'footer.about': 'About us',
@@ -27,7 +27,7 @@ export default {
   'footer.contact': 'Contact',
   'footer.shipping': 'Shipping policy',
   'footer.returns': 'Returns and refunds',
-  'footer.track': 'Track order',
+  'footer.track': 'Track delivery',
   'footer.legal': 'Legal',
   'footer.privacy': 'Privacy policy',
   'footer.terms': 'Terms of use',

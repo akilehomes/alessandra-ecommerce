@@ -1,15 +1,15 @@
 export default {
   // Menu
   'nav.home': 'Início',
-  'nav.shop': 'Loja',
+  'nav.shop': 'Coleção',
   'nav.projects': 'Projetos',
   'nav.about': 'Sobre',
   'nav.login': 'Entrar',
   'nav.register': 'Criar conta',
   'nav.logout': 'Sair',
-  'nav.wishlist': 'Lista de desejos',
+  'nav.wishlist': 'Minha seleção',
   'nav.cart': 'Sacola',
-  'nav.search': 'Buscar',
+  'nav.search': 'Explorar',
   'nav.language': 'Idioma',
   'nav.region': 'Região',
   'region.BR': '🇧🇷 Brasil',
@@ -17,8 +17,8 @@ export default {
   'region.EU': '🇪🇺 Europa',
 
   // Rodape
-  'footer.shop': 'Loja',
-  'footer.allProducts': 'Todos os produtos',
+  'footer.shop': 'Coleção',
+  'footer.allProducts': 'Todas as peças',
   'footer.search': 'Busca avançada',
   'footer.studio': 'Estúdio',
   'footer.about': 'Sobre nós',
@@ -27,7 +27,7 @@ export default {
   'footer.contact': 'Contato',
   'footer.shipping': 'Política de envio',
   'footer.returns': 'Trocas e devoluções',
-  'footer.track': 'Acompanhar pedido',
+  'footer.track': 'Acompanhar entrega',
   'footer.legal': 'Legal',
   'footer.privacy': 'Política de privacidade',
   'footer.terms': 'Termos de uso',

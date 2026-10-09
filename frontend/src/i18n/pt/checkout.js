@@ -1,5 +1,5 @@
 export default {
-  'checkout.title': 'Finalizar compra',
+  'checkout.title': 'Concluir pedido',
   'checkout.step1': '1. Dados e endereço',
   'checkout.step2': '2. Envio',
   'checkout.step3': '3. Pagamento',
@@ -46,6 +46,6 @@ export default {
   'checkout.errCompany': 'Informe a razão social da empresa.',
   'checkout.errNotAvailable': 'Algum produto da sacola ainda não está à venda neste país. Escolha outro país ou revise a sacola.',
   'checkout.errTerms': 'Para continuar, aceite os Termos de uso e a Política de privacidade.',
-  'checkout.couponRemoved': 'Seu cupom não é mais válido e foi removido. Revise o total e continue.',
+  'checkout.couponRemoved': 'Seu código não é mais válido e foi removido. Revise o total e continue.',
   'checkout.startFailed': 'Não foi possível iniciar o pagamento. Tente novamente.',
 };

@@ -1,5 +1,5 @@
 export default {
-  'checkout.title': 'Finalizar compra',
+  'checkout.title': 'Completar pedido',
   'checkout.step1': '1. Datos y dirección',
   'checkout.step2': '2. Envío',
   'checkout.step3': '3. Pago',
@@ -46,6 +46,6 @@ export default {
   'checkout.errCompany': 'Introduce la razón social de la empresa.',
   'checkout.errNotAvailable': 'Algún producto de la bolsa aún no está a la venta en este país. Elige otro país o revisa la bolsa.',
   'checkout.errTerms': 'Para continuar, acepta los Términos de uso y la Política de privacidad.',
-  'checkout.couponRemoved': 'Tu cupón ya no es válido y se ha eliminado. Revisa el total y continúa.',
+  'checkout.couponRemoved': 'Tu código ya no es válido y se ha eliminado. Revisa el total y continúa.',
   'checkout.startFailed': 'No se pudo iniciar el pago. Inténtalo de nuevo.',
 };

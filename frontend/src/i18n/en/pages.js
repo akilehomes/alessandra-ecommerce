@@ -1,11 +1,11 @@
 export default {
   'home.tagline': 'European Design with a Brazilian Soul',
-  'home.shop': 'SHOP',
+  'home.shop': 'COLLECTION',
   'home.shopSub': 'Selected pieces',
   'home.projects': 'PROJECTS',
   'home.projectsSub': 'Transformed spaces',
 
-  'shop.title': 'Products',
+  'shop.title': 'Pieces',
   'shop.count.one': '{n} item',
   'shop.count.other': '{n} items',
   'shop.view': 'View',
@@ -22,7 +22,7 @@ export default {
   'about.designSub': 'European with a Brazilian soul',
   'about.quality': 'Quality',
   'about.qualitySub': 'Premium pieces and craftsmanship',
-  'about.shop': 'Shop',
+  'about.shop': 'Collection',
 
   'projects.title': 'Projects',
   'projects.sub': 'Transformed spaces',
@@ -30,7 +30,7 @@ export default {
   'projects.studio': 'Studio',
   'projects.showroom': 'Showroom',
   'projects.loft': 'Loft',
-  'projects.shop': 'Shop',
+  'projects.shop': 'Collection',
 
   'success.title': 'Order confirmed',
   'success.thanks': 'Thank you for your purchase!',

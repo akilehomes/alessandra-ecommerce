@@ -1,5 +1,5 @@
 export default {
-  'checkout.title': 'Checkout',
+  'checkout.title': 'Complete order',
   'checkout.step1': '1. Details and address',
   'checkout.step2': '2. Shipping',
   'checkout.step3': '3. Payment',
@@ -46,6 +46,6 @@ export default {
   'checkout.errCompany': 'Please enter the company name.',
   'checkout.errNotAvailable': 'One of the products in your bag is not available for sale in this country yet. Choose another country or review your bag.',
   'checkout.errTerms': 'To continue, please accept the Terms of use and the Privacy policy.',
-  'checkout.couponRemoved': 'Your coupon is no longer valid and was removed. Review the total and continue.',
+  'checkout.couponRemoved': 'Your code is no longer valid and was removed. Review the total and continue.',
   'checkout.startFailed': 'Could not start the payment. Please try again.',
 };

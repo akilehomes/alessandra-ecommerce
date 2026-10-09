@@ -1,5 +1,5 @@
 export default {
-  'checkout.title': 'Finaliser la commande',
+  'checkout.title': 'Valider la commande',
   'checkout.step1': '1. Coordonnées et adresse',
   'checkout.step2': '2. Livraison',
   'checkout.step3': '3. Paiement',
@@ -46,6 +46,6 @@ export default {
   'checkout.errCompany': 'Saisissez la raison sociale de l\'entreprise.',
   'checkout.errNotAvailable': 'Un produit du sac n\'est pas encore en vente dans ce pays. Choisissez un autre pays ou vérifiez votre sac.',
   'checkout.errTerms': 'Pour continuer, acceptez les Conditions d\'utilisation et la Politique de confidentialité.',
-  'checkout.couponRemoved': 'Votre code promo n\'est plus valide et a été retiré. Vérifiez le total et continuez.',
+  'checkout.couponRemoved': 'Votre code n\'est plus valide et a été retiré. Vérifiez le total et continuez.',
   'checkout.startFailed': 'Impossible de lancer le paiement. Veuillez réessayer.',
 };
