@@ -1,42 +1,86 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n';
 
 export default function Home() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const images = [
+    '/alessandra-1.jpg',
+    '/alessandra-2.jpg',
+    '/alessandra-3.jpg',
+    '/alessandra-4.jpg'
+  ];
 
   return (
-    <div className="bg-white pt-16">
-      {/* Header Section - NO BACKGROUND IMAGE - Simple title */}
-      <section className="py-32 px-6">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 style={{
-            fontFamily: 'Outfit, sans-serif',
-            fontSize: '36px',
-            fontWeight: '700',
-            letterSpacing: '1px',
-            marginBottom: '16px',
-            textTransform: 'uppercase'
-          }}>
-            ALESSANDRA ZANETTI
-          </h1>
-          <p style={{
-            fontFamily: 'Crimson Text, serif',
-            fontSize: '14px',
-            fontStyle: 'italic',
-            fontWeight: '300',
-            color: '#666'
-          }}>
-            {t('home.tagline')}
-          </p>
+    <div className="bg-white">
+      {/* Hero Video Section */}
+      <section className="w-full h-screen relative overflow-hidden bg-black">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/alessandra-hero.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0  flex items-end justify-center pb-12">
+          <div className="text-center text-white">
+            <p style={{
+              fontFamily: 'Crimson Text, serif',
+              fontSize: '24px',
+              fontStyle: 'italic',
+              fontWeight: '300',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+            }}>
+              {t('home.tagline')}
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Cards Section - 2 Column Grid - NO BACKGROUND IMAGES */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-0">
+      {/* Gallery Section */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          {/* Main Image */}
+          <div className="mb-8 relative overflow-hidden rounded-lg shadow-lg">
+            <img
+              src={images[activeImageIndex]}
+              alt={`Galeria Alessandra ${activeImageIndex + 1}`}
+              className="w-full h-auto max-h-96 object-cover"
+            />
+          </div>
+
+          {/* Thumbnail Navigation */}
+          <div className="flex gap-4 justify-center flex-wrap">
+            {images.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveImageIndex(idx)}
+                className={`transition-all ${
+                  idx === activeImageIndex
+                    ? 'ring-2 ring-black'
+                    : 'opacity-70 hover:opacity-100'
+                }`}
+              >
+                <img
+                  src={img}
+                  alt={`Thumb ${idx + 1}`}
+                  className="w-20 h-28 object-cover rounded"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Cards Section - 2 Column Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-0 bg-white">
         <div
-          className="flex flex-col items-center justify-center text-center py-24 px-6 group cursor-pointer border-r border-gray-200"
+          className="flex flex-col items-center justify-center text-center py-24 px-6 group cursor-pointer border-r border-gray-200 hover:bg-gray-50 transition"
           onClick={() => navigate('/shop')}
         >
           <h2 style={{
@@ -61,7 +105,7 @@ export default function Home() {
         </div>
 
         <div
-          className="flex flex-col items-center justify-center text-center py-24 px-6 group cursor-pointer"
+          className="flex flex-col items-center justify-center text-center py-24 px-6 group cursor-pointer hover:bg-gray-50 transition"
           onClick={() => navigate('/projects')}
         >
           <h2 style={{

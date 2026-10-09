@@ -21,7 +21,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-16">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent border-b border-transparent h-16">
       <div className="max-w-full px-6 h-full flex items-center justify-between gap-4">
         {/* Left Navigation */}
         <div className="flex-1 basis-0 min-w-0 flex gap-6 text-sm font-medium">
@@ -45,9 +45,7 @@ export default function Navbar() {
           <div className="flex gap-3 items-center text-sm whitespace-nowrap">
             {user ? (
               <>
-                <Link to="/account/orders" className="hidden xl:inline hover:opacity-60 transition truncate max-w-[110px] whitespace-nowrap" title={user.name}>
-                  {String(user.name || '').split(' ')[0]}
-                </Link>
+
                 <button
                   onClick={handleLogout}
                   className="hover:opacity-60 transition text-red-500 font-medium whitespace-nowrap"
@@ -57,11 +55,12 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link to="/login" className="hover:opacity-60 transition whitespace-nowrap">
-                  {t('nav.login')}
-                </Link>
-                <Link to="/register" className="hover:opacity-60 transition font-bold whitespace-nowrap">
-                  {t('nav.register')}
+                <Link to="/login" className="hover:opacity-60 transition p-1" title={t('nav.login')}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                  </svg>
                 </Link>
               </>
             )}

@@ -54,7 +54,7 @@ export default function LocaleSwitcher() {
         aria-expanded={open}
         aria-label={`${t('locale.title')}: ${countryName(country)}, ${LANGUAGES[lang]}`}
         title={`${countryName(country)} · ${LANGUAGES[lang]} · ${currency}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', border: '1px solid #000', background: '#fff', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 6px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', textDecoration: 'none' }}
       >
         <span style={{ fontSize: 15, lineHeight: 1 }}>{flag(country)}</span>
         <span>{lang.toUpperCase()}</span>
@@ -65,7 +65,7 @@ export default function LocaleSwitcher() {
         <div
           role="dialog"
           aria-label={t('locale.title')}
-          style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 260, background: '#fff', border: '1px solid #d1d5db', boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 60 }}
+          style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 300, background: '#fff', border: '1px solid #d1d5db', boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 100 }}
         >
           <div style={{ padding: '10px 10px 4px', fontFamily: 'Outfit, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#6b7280' }}>
             {t('locale.language')}
@@ -81,7 +81,7 @@ export default function LocaleSwitcher() {
           <div style={{ padding: '4px 10px', fontFamily: 'Outfit, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#6b7280', borderTop: '1px solid #eee' }}>
             {t('locale.country')}
           </div>
-          <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
             {sorted.map((c) => (
               <button
                 key={c.code}
