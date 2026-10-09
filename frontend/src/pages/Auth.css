@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f3efe6 url('../assets/login-bg.webp') center / 560px auto repeat;
   padding: 20px;
 }
 
@@ -13,7 +13,7 @@
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
 }
 
 .auth-form h1 {
