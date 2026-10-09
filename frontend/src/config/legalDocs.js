@@ -77,7 +77,7 @@ export const LEGAL_DOCS = {
         'Você também pode reclamar à autoridade de proteção de dados: no Brasil, a ANPD; na União Europeia, a autoridade do seu país.',
       ] },
       { h: '8. Cookies e armazenamento local', p: [
-        'Usamos armazenamento do navegador para manter seu carrinho, sua sessão e preferências (como região e moeda). São itens essenciais ao funcionamento da loja. Se passarmos a usar cookies de análise ou marketing, pediremos o seu consentimento antes.',
+        'Usamos armazenamento do navegador para manter sua sacola, sua sessão e preferências (como região e moeda). São itens essenciais ao funcionamento da loja. Se passarmos a usar cookies de análise ou marketing, pediremos o seu consentimento antes.',
       ] },
       { h: '9. Segurança', p: [
         'Adotamos medidas técnicas e organizacionais para proteger os dados, como conexão criptografada (HTTPS), senhas protegidas por hash e controle de acesso. Nenhum sistema é totalmente imune a falhas; em caso de incidente relevante, comunicaremos você e as autoridades conforme a lei.',
@@ -121,7 +121,7 @@ export const LEGAL_DOCS = {
         'Entregamos em todo o Brasil e em Portugal e demais países da União Europeia listados no checkout.',
       ] },
       { h: '2. Como o frete é calculado', p: [
-        'Brasil: o frete é calculado no carrinho e no checkout a partir do CEP, do peso e das medidas da embalagem de cada produto. Você escolhe entre as transportadoras e serviços disponíveis, com prazo e valor.',
+        'Brasil: o frete é calculado na sacola e no checkout a partir do CEP, do peso e das medidas da embalagem de cada produto. Você escolhe entre as transportadoras e serviços disponíveis, com prazo e valor.',
         'Europa: o frete é uma tarifa fixa informada no checkout antes do pagamento.',
       ] },
       { h: '3. Prazos', p: [

@@ -77,7 +77,7 @@ export const LEGAL_DOCS_EN = {
         'You may also complain to the data protection authority: in Brazil, the ANPD; in the European Union, the authority of your country.',
       ] },
       { h: '8. Cookies and local storage', p: [
-        'We use browser storage to keep your cart, your session and preferences (such as region, currency and language). These items are essential for the store to work. If we start using analytics or marketing cookies, we will ask for your consent first.',
+        'We use browser storage to keep your bag, your session and preferences (such as region, currency and language). These items are essential for the store to work. If we start using analytics or marketing cookies, we will ask for your consent first.',
       ] },
       { h: '9. Security', p: [
         'We adopt technical and organisational measures to protect data, such as encrypted connections (HTTPS), hashed passwords and access control. No system is completely free from failure; in case of a relevant incident, we will notify you and the authorities as required by law.',
@@ -121,7 +121,7 @@ export const LEGAL_DOCS_EN = {
         'We deliver throughout Brazil and to Portugal and the other European Union countries listed at checkout.',
       ] },
       { h: '2. How shipping is calculated', p: [
-        'Brazil: shipping is calculated in the cart and at checkout from the CEP (postal code), the weight and the packaging dimensions of each product. You choose among the available carriers and services, with price and delivery time.',
+        'Brazil: shipping is calculated in the bag and at checkout from the CEP (postal code), the weight and the packaging dimensions of each product. You choose among the available carriers and services, with price and delivery time.',
         'Europe: shipping is a fixed rate shown at checkout before payment.',
       ] },
       { h: '3. Delivery times', p: [

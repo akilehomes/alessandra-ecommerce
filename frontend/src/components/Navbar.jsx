@@ -83,11 +83,10 @@ export default function Navbar() {
               </span>
             )}
           </Link>
-          <Link to="/cart" className="hover:opacity-60 transition p-1 relative">
+          <Link to="/cart" className="hover:opacity-60 transition p-1 relative" title={t('nav.cart')} aria-label={t('nav.cart')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              <path d="M6 7h12l1 14H5L6 7z"></path>
+              <path d="M9 7V6a3 3 0 0 1 6 0v1"></path>
             </svg>
             {cartItemCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
