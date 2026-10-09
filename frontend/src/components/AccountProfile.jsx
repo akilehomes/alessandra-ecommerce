@@ -4,6 +4,7 @@ import { useCountries } from '../utils/geo';
 import { ptError } from '../utils/errors';
 import { useI18n } from '../i18n';
 import DocumentFields from './DocumentFields';
+import { countryFormat } from '../utils/countryFormat';
 import './Forms.css';
 
 // Aba "Dados pessoais": nome, telefone, pais e documento fiscal (usados no checkout e na nota fiscal)
@@ -49,7 +50,7 @@ export default function AccountProfile() {
         </div>
         <div className="fx-field">
           <label htmlFor="pf-phone">{t('profile.phone')}</label>
-          <input id="pf-phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} autoComplete="tel" placeholder="+55 11 99999-9999" />
+          <input id="pf-phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} autoComplete="tel" placeholder={countryFormat(form.country).phonePh || '+'} />
         </div>
         <div className="fx-field full">
           <label htmlFor="pf-country">{t('profile.country')}</label>

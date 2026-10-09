@@ -36,4 +36,11 @@ export default {
   'doc.hintCompany': 'Used to issue the company invoice with VAT.',
   'doc.hintIndividual': 'Fill in only if you want the invoice with your tax number.',
   'doc.phVat': 'E.g. PT123456789',
+
+  // Regiao por pais
+  'addr.state.PT': 'District (optional)',
+  'addr.state.ES': 'Province (optional)',
+  'addr.state.FR': 'Département (optional)',
+  'addr.state.IT': 'Province (optional)',
+  'addr.state.DE': 'Federal state (optional)',
 };

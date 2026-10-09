@@ -11,6 +11,7 @@ import { useCouponStore, computeDiscount } from '../store/couponStore';
 import ShippingSelector from '../components/ShippingSelector';
 import AddressPicker from '../components/AddressPicker';
 import DocumentFields from '../components/DocumentFields';
+import { countryFormat } from '../utils/countryFormat';
 import { useCountries, emptyAddress } from '../utils/geo';
 import { ptError } from '../utils/errors';
 import { useI18n } from '../i18n';
@@ -328,7 +329,7 @@ export default function Checkout() {
                 </div>
                 <div className="fx-field full">
                   <label htmlFor="ck-phone">{t('checkout.phone')}</label>
-                  <input id="ck-phone" type="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" placeholder="+55 11 99999-9999" />
+                  <input id="ck-phone" type="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" placeholder={countryFormat(addr.country).phonePh || '+'} />
                 </div>
               </div>
 

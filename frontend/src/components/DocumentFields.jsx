@@ -1,6 +1,7 @@
 import React from 'react';
 import { useCountries, maskCpf, maskCnpj } from '../utils/geo';
 import { useI18n } from '../i18n';
+import { countryFormat } from '../utils/countryFormat';
 import './Forms.css';
 
 // Dados fiscais do cliente: pessoa fisica ou juridica + documento conforme o pais do faturamento
@@ -13,6 +14,9 @@ export default function DocumentFields({ country, value, onChange, idPrefix = 'd
   const person = value.person_type === 'company' ? 'company' : 'individual';
   const rules = info ? info.documents[person] : null;
   const docType = rules ? rules.types[0] : null;
+
+  const fmt = countryFormat(country);
+  const localTax = docType === 'tax_id' && person === 'individual' ? fmt : {};
 
   const set = (patch) => onChange({ ...value, ...patch });
   const maskDoc = (v) => (docType === 'cpf' ? maskCpf(v) : docType === 'cnpj' ? maskCnpj(v) : v.toUpperCase());
@@ -36,13 +40,13 @@ export default function DocumentFields({ country, value, onChange, idPrefix = 'd
 
       {rules && (
         <div className="fx-field full">
-          <label htmlFor={`${idPrefix}-number`}>{t(`doc.${docType}`)}{rules.required ? '' : t('doc.optionalSuffix')}</label>
+          <label htmlFor={`${idPrefix}-number`}>{localTax.taxLabel || t(`doc.${docType}`)}{rules.required ? '' : t('doc.optionalSuffix')}</label>
           <input
             id={`${idPrefix}-number`}
             value={maskDoc(value.document_number || '')}
             onChange={(e) => set({ document_number: maskDoc(e.target.value) })}
             inputMode={docType === 'cpf' || docType === 'cnpj' || docType === 'nif' ? 'numeric' : 'text'}
-            placeholder={docType === 'cpf' ? '000.000.000-00' : docType === 'cnpj' ? '00.000.000/0000-00' : docType === 'vat' ? t('doc.phVat') : ''}
+            placeholder={docType === 'cpf' ? '000.000.000-00' : docType === 'cnpj' ? '00.000.000/0000-00' : docType === 'vat' ? t('doc.phVat') : (localTax.taxPh || '')}
           />
           <span className="fx-hint">
             {country === 'BR'

@@ -17,10 +17,23 @@ export function loadCountries() {
   return inflight;
 }
 
+
+// Fallback de paises se o backend nao responder
+const FALLBACK_COUNTRIES = [
+  { code: 'BR', name: 'Brasil', region: 'BR', currency: 'BRL' },
+  { code: 'PT', name: 'Portugal', region: 'PT', currency: 'EUR' },
+  { code: 'ES', name: 'Espanha', region: 'EU', currency: 'EUR' },
+  { code: 'FR', name: 'França', region: 'EU', currency: 'EUR' },
+  { code: 'IT', name: 'Itália', region: 'EU', currency: 'EUR' },
+  { code: 'DE', name: 'Alemanha', region: 'EU', currency: 'EUR' },
+  { code: 'UK', name: 'Reino Unido', region: 'EU', currency: 'GBP' },
+  { code: 'US', name: 'Estados Unidos', region: 'US', currency: 'USD' },
+];
+
 export function useCountries() {
   const [countries, setCountries] = useState(cache || []);
   useEffect(() => {
-    if (!cache) loadCountries().then(setCountries).catch(() => {});
+    if (!cache) loadCountries().then(setCountries).catch(() => setCountries(FALLBACK_COUNTRIES));
   }, []);
   return countries;
 }
@@ -72,5 +85,7 @@ export function formatAddress(a, countries = [], countryName) {
   const second = [a.complement, a.district].filter(Boolean).join(' - ');
   const cityState = [a.city, a.state].filter(Boolean).join(a.country === 'BR' ? '/' : ', ');
   const postal = a.country === 'BR' ? maskCep(a.postal_code || a.cep) : (a.postal_code || a.cep);
-  return [first, second, cityState, postal, country].filter(Boolean).join(' · ');
+  // Fora do Brasil o codigo postal vem antes da cidade (75001 Paris, 1000-001 Lisboa)
+  if (a.country === 'BR') return [first, second, cityState, postal, country].filter(Boolean).join(' · ');
+  return [first, second, [postal, a.city].filter(Boolean).join(' '), a.state, country].filter(Boolean).join(' · ');
 }

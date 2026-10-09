@@ -36,4 +36,11 @@ export default {
   'doc.hintCompany': 'Usado para emitir a fatura com IVA/VAT da empresa.',
   'doc.hintIndividual': 'Preencha apenas se quiser a fatura com o seu número de contribuinte.',
   'doc.phVat': 'Ex.: PT123456789',
+
+  // Regiao por pais
+  'addr.state.PT': 'Distrito (opcional)',
+  'addr.state.ES': 'Província (opcional)',
+  'addr.state.FR': 'Departamento (opcional)',
+  'addr.state.IT': 'Província (opcional)',
+  'addr.state.DE': 'Estado federado (opcional)',
 };

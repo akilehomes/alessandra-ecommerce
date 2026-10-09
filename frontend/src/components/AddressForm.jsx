@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCountries, maskCep, lookupCep, onlyDigits } from '../utils/geo';
+import { countryFormat } from '../utils/countryFormat';
 import { useI18n } from '../i18n';
 import './Forms.css';
 
@@ -11,6 +12,9 @@ export default function AddressForm({ value, onChange, idPrefix = 'addr', showRe
   const [cepStatus, setCepStatus] = useState('');
   const country = countries.find((c) => c.code === value.country);
   const isBR = value.country === 'BR';
+  const fmt = countryFormat(value.country);
+  const postalLabel = isBR ? t('addr.cep') : `${t('addr.postal')}${fmt.postalLocal ? ` (${fmt.postalLocal})` : ''}`;
+  const stateLabel = isBR ? t('addr.stateBR') : t(fmt.stateKey || 'addr.stateEU');
 
   const set = (patch) => onChange({ ...value, ...patch });
   const field = (name) => ({
@@ -63,7 +67,7 @@ export default function AddressForm({ value, onChange, idPrefix = 'addr', showRe
       )}
 
       <div className="fx-field">
-        <label htmlFor={`${idPrefix}-postal`}>{isBR ? t('addr.cep') : t('addr.postal')}</label>
+        <label htmlFor={`${idPrefix}-postal`}>{postalLabel}</label>
         <input
           id={`${idPrefix}-postal`}
           autoComplete="postal-code"
@@ -78,13 +82,13 @@ export default function AddressForm({ value, onChange, idPrefix = 'addr', showRe
       {showPhone ? (
         <div className="fx-field">
           <label htmlFor={`${idPrefix}-phone`}>{t('addr.phone')}</label>
-          <input id={`${idPrefix}-phone`} type="tel" autoComplete="tel" value={value.phone || ''} onChange={(e) => set({ phone: e.target.value })} placeholder={isBR ? '(11) 99999-9999' : '+351 912 345 678'} />
+          <input id={`${idPrefix}-phone`} type="tel" autoComplete="tel" value={value.phone || ''} onChange={(e) => set({ phone: e.target.value })} placeholder={fmt.phonePh || '+'} />
         </div>
       ) : <div />}
 
       <div className="fx-field full">
         <label htmlFor={`${idPrefix}-street`}>{isBR ? t('addr.streetBR') : t('addr.streetEU')}</label>
-        <input autoComplete="address-line1" {...field('street')} />
+        <input autoComplete="address-line1" {...field('street')} placeholder={fmt.streetPh || ''} />
       </div>
 
       <div className="fx-field">
@@ -109,7 +113,7 @@ export default function AddressForm({ value, onChange, idPrefix = 'addr', showRe
       </div>
 
       <div className="fx-field">
-        <label htmlFor={`${idPrefix}-state`}>{isBR ? t('addr.stateBR') : t('addr.stateEU')}</label>
+        <label htmlFor={`${idPrefix}-state`}>{stateLabel}</label>
         {isBR && country && country.states ? (
           <select id={`${idPrefix}-state`} value={value.state || ''} onChange={(e) => set({ state: e.target.value })}>
             <option value="">{t('addr.select')}</option>

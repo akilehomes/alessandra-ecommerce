@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 import pt from './pt';
 import en from './en';
+import es from './es';
+import fr from './fr';
 import { useLanguageStore } from './languageStore';
 
 export { LANGUAGES, useLanguageStore } from './languageStore';
 
-const DICTS = { pt, en };
+const DICTS = { pt, en, es, fr };
 
 // Busca a chave no idioma; se faltar, usa o portugues; se faltar tambem, mostra a propria chave
 export function translate(lang, key, vars) {
@@ -17,7 +19,7 @@ export function translate(lang, key, vars) {
 // Para uso fora de componentes (stores, utilitarios)
 export const tNow = (key, vars) => translate(useLanguageStore.getState().lang, key, vars);
 
-const LOCALES = { pt: 'pt-BR', en: 'en-GB' };
+const LOCALES = { pt: 'pt-BR', en: 'en-GB', es: 'es-ES', fr: 'fr-FR' };
 
 // Hook principal: t(chave, variaveis), idioma atual e formatadores por idioma
 export function useI18n() {

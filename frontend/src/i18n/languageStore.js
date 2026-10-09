@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 // Idiomas disponiveis. Para adicionar outro (es, fr, it, de...): crie i18n/<codigo>/ com os mesmos textos e inclua aqui.
-export const LANGUAGES = { pt: 'Português', en: 'English' };
+export const LANGUAGES = { pt: 'Português', en: 'English', es: 'Español', fr: 'Français' };
 const STORAGE_KEY = 'lang';
 
 function detect() {
