@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n';
 
 export default function Home() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
   const images = [
     '/alessandra-1.jpg',
     '/alessandra-2.jpg',
@@ -44,48 +42,16 @@ export default function Home() {
 
       {/* Gallery Section */}
       <section className="py-20 px-6 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          {/* Carrossel: foto na proporcao original (retrato 2:3), sem corte */}
-          <div className="mb-8 relative mx-auto shadow-lg rounded-lg overflow-hidden bg-white" style={{ height: 'min(80vh, 720px)', aspectRatio: '2 / 3', maxWidth: '100%' }}>
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+          {images.map((img, idx) => (
             <img
-              src={images[activeImageIndex]}
-              alt={`Galeria Alessandra ${activeImageIndex + 1}`}
-              className="w-full h-full object-contain"
+              key={idx}
+              src={img}
+              alt={`Galeria Alessandra ${idx + 1}`}
+              className="w-full rounded-lg shadow-lg"
+              style={{ aspectRatio: '2 / 3', objectFit: 'cover' }}
             />
-            <button
-              type="button"
-              aria-label="Anterior"
-              onClick={() => setActiveImageIndex((activeImageIndex + images.length - 1) % images.length)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-xl leading-none"
-            >‹</button>
-            <button
-              type="button"
-              aria-label="Próxima"
-              onClick={() => setActiveImageIndex((activeImageIndex + 1) % images.length)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-xl leading-none"
-            >›</button>
-          </div>
-
-          {/* Thumbnail Navigation */}
-          <div className="flex gap-4 justify-center flex-wrap">
-            {images.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveImageIndex(idx)}
-                className={`transition-all ${
-                  idx === activeImageIndex
-                    ? 'ring-2 ring-black'
-                    : 'opacity-70 hover:opacity-100'
-                }`}
-              >
-                <img
-                  src={img}
-                  alt={`Thumb ${idx + 1}`}
-                  className="w-20 h-28 object-cover rounded"
-                />
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
       </section>
 
