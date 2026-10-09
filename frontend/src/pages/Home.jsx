@@ -45,13 +45,25 @@ export default function Home() {
       {/* Gallery Section */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          {/* Main Image */}
-          <div className="mb-8 relative overflow-hidden rounded-lg shadow-lg">
+          {/* Carrossel: foto na proporcao original (retrato 2:3), sem corte */}
+          <div className="mb-8 relative mx-auto shadow-lg rounded-lg overflow-hidden bg-white" style={{ height: 'min(80vh, 720px)', aspectRatio: '2 / 3', maxWidth: '100%' }}>
             <img
               src={images[activeImageIndex]}
               alt={`Galeria Alessandra ${activeImageIndex + 1}`}
-              className="w-full h-auto max-h-96 object-cover"
+              className="w-full h-full object-contain"
             />
+            <button
+              type="button"
+              aria-label="Anterior"
+              onClick={() => setActiveImageIndex((activeImageIndex + images.length - 1) % images.length)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-xl leading-none"
+            >‹</button>
+            <button
+              type="button"
+              aria-label="Próxima"
+              onClick={() => setActiveImageIndex((activeImageIndex + 1) % images.length)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-xl leading-none"
+            >›</button>
           </div>
 
           {/* Thumbnail Navigation */}
